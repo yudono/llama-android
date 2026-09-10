@@ -1,0 +1,27 @@
+# Build output
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android build artifacts
+android/app/build/
+android/.gradle/
+android/build/
+*.apk
+*.dex
+*.class
+*.jar
+*.keystore
+
+# Temp
+*.tmp
+*.log
