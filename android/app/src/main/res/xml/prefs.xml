@@ -19,11 +19,10 @@
         android:title="Storage"
         app:iconSpaceReserved="false">
 
-        <EditTextPreference
+        <Preference
             android:key="models_dir"
             android:title="Folder model"
-            android:summary="Default /sdcard/models. Butuh izin akses file; tanpa izin dipakai folder privat aplikasi."
-            android:defaultValue="/sdcard/models"
+            android:summary="/sdcard/models"
             android:dialogTitle="Folder model"
             app:iconSpaceReserved="false" />
     </PreferenceCategory>

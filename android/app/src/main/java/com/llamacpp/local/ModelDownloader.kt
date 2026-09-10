@@ -26,7 +26,7 @@ object ModelDownloader {
 
     // Whitelist: hanya model bawaan yang boleh diunduh.
     fun isAllowed(repo: String): Boolean =
-        DummyData.models.any { it.repo == repo }
+        AppData.models.any { it.repo == repo }
 
     // Folder model: bisa diubah user (default /sdcard/models).
     // Bila tak bisa ditulis -> fallback folder privat aplikasi (selalu bisa).
@@ -64,6 +64,17 @@ object ModelDownloader {
 
     fun legacyFile(ctx: Context, filename: String): File =
         File(legacyDir(ctx), filename)
+
+    // File tersimpan: dukung path absolut (file manual) & nama relatif.
+    fun storedFile(ctx: Context, saved: String?): File? {
+        if (saved.isNullOrBlank()) return null
+        val candidates = if (saved.startsWith("/")) {
+            listOf(File(saved))
+        } else {
+            listOf(File(modelsDir(ctx), saved), File(legacyDir(ctx), saved))
+        }
+        return candidates.firstOrNull { it.exists() && it.length() > 0 }
+    }
 
     fun getToken(ctx: Context): String =
         db(ctx).get(KEY_TOKEN, "") ?: ""
@@ -198,17 +209,64 @@ object ModelDownloader {
         "https://huggingface.co/$repo/resolve/main/$filename"
 
     // Antrekan DownloadManager sistem (tahan banting: retry + lanjut otomatis).
+    // Tujuan = folder model aktif (shared butuh MANAGE_EXTERNAL_STORAGE).
     fun enqueue(ctx: Context, url: String, filename: String, token: String): Long {
+        val dest = File(modelsDir(ctx), filename)
         val req = DownloadManager.Request(Uri.parse(url)).apply {
             setTitle(filename)
             setDescription("Downloading model dari HuggingFace")
             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-            setDestinationInExternalFilesDir(ctx, "models", filename)
+            if (dest.absolutePath.startsWith(legacyDir(ctx).absolutePath)) {
+                setDestinationInExternalFilesDir(ctx, "models", filename)
+            } else {
+                dest.parentFile?.mkdirs()
+                setDestinationUri(Uri.fromFile(dest))
+            }
             setAllowedOverMetered(true)
             setAllowedOverRoaming(false)
             if (token.isNotBlank()) addRequestHeader("Authorization", "Bearer ${token.trim()}")
         }
         return (ctx.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
+    }
+
+    // Scan folder: file .gguf APAPUN yang cocok nama model langsung
+    // didaftarkan ke list (termasuk file dari sumber lain). Dipanggil
+    // tiap start/resume agar list selalu sinkron dengan isi folder.
+    fun scanDisk(ctx: Context) {
+        val seen = mutableSetOf<String>()
+        val dirs = listOf(modelsDir(ctx), legacyDir(ctx))
+        for (dir in dirs) {
+            val files = runCatching {
+                dir.listFiles { f -> f.isFile && f.name.endsWith(".gguf", true) }
+            }.getOrNull() ?: continue
+            for (f in files) {
+                if (f.length() <= 0 || !seen.add(f.name.lowercase())) continue
+                matchModel(f.name)?.let { (idx, quant) ->
+                    val m = AppData.models[idx]
+                    saveFilename(ctx, m.name, quant, f.name)
+                    if (m.quant != quant) {
+                        m.quant = quant
+                        saveQuant(ctx, m.name, quant)
+                    }
+                    Log.d("llama-dl", "scan: ${f.name} -> ${m.shortName} $quant")
+                }
+            }
+        }
+    }
+
+    // Cocokkan nama file ke (index model, quant): basis nama repo + quant.
+    private fun matchModel(filename: String): Pair<Int, String>? {
+        val nf = norm(filename)
+        AppData.models.forEachIndexed { idx, m ->
+            val base = norm(m.repo.substringAfter('/')
+                .removeSuffix("-GGUF").removeSuffix("-gguf"))
+            if (base.isNotEmpty() && nf.contains(base)) {
+                val q = AiModel.QUANTS.firstOrNull { nf.contains(norm(it)) }
+                    ?: m.quant
+                return idx to q
+            }
+        }
+        return null
     }
 
     data class Progress(val status: Int, val done: Long, val total: Long)

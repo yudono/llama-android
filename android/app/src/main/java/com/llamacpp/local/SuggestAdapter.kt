@@ -10,7 +10,7 @@ class SuggestAdapter(
     private val onPick: (String) -> Unit
 ) : RecyclerView.Adapter<SuggestAdapter.VH>() {
 
-    private val items = DummyData.suggestions
+    private val items = AppData.suggestions
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.item_suggestion, parent, false)

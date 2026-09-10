@@ -65,9 +65,16 @@ class ChatAdapter(
     class AiVH(v: View, onRetry: () -> Unit) : RecyclerView.ViewHolder(v) {
         val text: TextView = v.findViewById(R.id.tv_text)
         init {
+            v.findViewById<View>(R.id.btn_copy).setOnClickListener {
+                val cm = v.context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                    as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("response", text.text))
+                android.widget.Toast.makeText(v.context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
+            }
+            v.findViewById<View>(R.id.btn_speak).setOnClickListener {
+                android.widget.Toast.makeText(v.context, "Voice coming soon", android.widget.Toast.LENGTH_SHORT).show()
+            }
             v.findViewById<View>(R.id.btn_retry).setOnClickListener { onRetry() }
-            v.findViewById<View>(R.id.btn_copy).setOnClickListener { /* dummy */ }
-            v.findViewById<View>(R.id.btn_speak).setOnClickListener { /* dummy */ }
         }
     }
 

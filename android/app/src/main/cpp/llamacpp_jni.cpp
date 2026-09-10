@@ -10,12 +10,16 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <atomic>
 #include <android/log.h>
 #include "llama.h"
 
 #define TAG "llamacpp-jni"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
+// Minta generate berhenti (tombol Stop). Dicek tiap token.
+static std::atomic<bool> g_abort{false};
 
 struct NativeModel {
     llama_model* model;
@@ -69,6 +73,11 @@ Java_com_llamacpp_local_LlamaBridge_unloadModel(JNIEnv*, jobject, jlong h) {
 JNIEXPORT jstring JNICALL
 Java_com_llamacpp_local_LlamaBridge_systemInfo(JNIEnv* env, jobject) {
     return env->NewStringUTF(llama_print_system_info());
+}
+
+JNIEXPORT void JNICALL
+Java_com_llamacpp_local_LlamaBridge_cancel(JNIEnv*, jobject) {
+    g_abort.store(true);
 }
 
 JNIEXPORT jint JNICALL
@@ -150,13 +159,14 @@ Java_com_llamacpp_local_LlamaBridge_generate(
         return true;
     };
     int32_t done = -1;
+    g_abort.store(false);
     if (!decode(toks.data(), (int32_t) toks.size())) {
         LOGE("decode prompt gagal");
     } else {
         done = 0;
         std::string pending;
         char piece[64];
-        while (done < maxTokens) {
+        while (done < maxTokens && !g_abort.load()) {
             llama_token id = llama_sampler_sample(smpl, ctx, -1);
             llama_sampler_accept(smpl, id);
             if (llama_vocab_is_eog(vocab, id)) break;

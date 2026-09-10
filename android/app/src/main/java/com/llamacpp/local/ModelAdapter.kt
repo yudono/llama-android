@@ -16,19 +16,20 @@ class ModelAdapter(
     private var selectedPos: Int,
     private val onSelect: (Int) -> Unit,
     private val onDownload: (Int) -> Unit,
-    private val onQuantChange: (Int, String) -> Unit
+    private val onQuantChange: (Int, String) -> Unit,
+    private val onDelete: (Int) -> Unit
 ) : RecyclerView.Adapter<ModelAdapter.VH>() {
 
-    var shown: List<AiModel> = DummyData.models
+    var shown: List<AiModel> = AppData.models
         private set
 
     fun filter(category: String) {
-        shown = if (category == "Semua") DummyData.models
-                else DummyData.models.filter { it.category == category }
+        shown = if (category == "Semua") AppData.models
+                else AppData.models.filter { it.category == category }
         notifyDataSetChanged()
     }
 
-    fun realPosition(shownPos: Int): Int = DummyData.models.indexOf(shown[shownPos])
+    fun realPosition(shownPos: Int): Int = AppData.models.indexOf(shown[shownPos])
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.item_model, parent, false)
@@ -68,11 +69,14 @@ class ModelAdapter(
                 h.action.visibility = if (real == selectedPos) View.GONE else View.VISIBLE
                 h.action.text = "Use"
                 h.action.setOnClickListener { onSelect(real) }
+                h.delete.visibility = View.VISIBLE
+                h.delete.setOnClickListener { onDelete(real) }
             }
             m.downloading -> {
                 h.status.text = "Downloading ${m.progress}%"
                 h.status.setTextColor(ContextCompat.getColor(h.itemView.context, R.color.yellow))
                 h.action.visibility = View.GONE
+                h.delete.visibility = View.GONE
             }
             else -> {
                 h.status.text = "Not downloaded"
@@ -80,6 +84,7 @@ class ModelAdapter(
                 h.action.visibility = View.VISIBLE
                 h.action.text = "Get"
                 h.action.setOnClickListener { onDownload(real) }
+                h.delete.visibility = View.GONE
             }
         }
         h.itemView.setOnClickListener { if (m.downloaded) onSelect(real) }
@@ -99,5 +104,6 @@ class ModelAdapter(
         val quant: Spinner = v.findViewById(R.id.sp_quant)
         val status: TextView = v.findViewById(R.id.tv_status)
         val action: MaterialButton = v.findViewById(R.id.btn_action)
+        val delete: MaterialButton = v.findViewById(R.id.btn_delete)
     }
 }

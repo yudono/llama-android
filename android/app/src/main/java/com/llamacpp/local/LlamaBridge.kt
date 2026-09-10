@@ -20,6 +20,7 @@ object LlamaBridge {
     @JvmStatic external fun loadModel(path: String, nCtx: Int): Long
     @JvmStatic external fun unloadModel(handle: Long)
     @JvmStatic external fun systemInfo(): String
+    @JvmStatic external fun cancel()
 
     @JvmStatic external fun generate(
         handle: Long,

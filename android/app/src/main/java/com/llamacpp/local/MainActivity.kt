@@ -33,6 +33,8 @@ class MainActivity : AppCompatActivity() {
     private var convId: Long = -1
     private var selectedModel = 0
     private var generating = false
+    private var streamPos = -1
+    private var lastSendMs = 0L
 
     // Cache model native yang sedang aktif (load sekali, pakai berkali-kali).
     private var modelHandle = 0L
@@ -88,7 +90,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun newConversation() {
-        val m = DummyData.models[selectedModel]
+        val m = AppData.models[selectedModel]
         convId = db.newConversation(m.name, m.quant, m.mobileCtx)
         chatAdapter.items.clear()
         chatAdapter.notifyDataSetChanged()
@@ -132,8 +134,16 @@ class MainActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) {}
         })
         b.btnSend.setOnClickListener {
+            if (generating) {
+                cancelGenerate()
+                return@setOnClickListener
+            }
+            // Anti double-send: abaikan tap < 800ms.
+            val now = System.currentTimeMillis()
+            if (now - lastSendMs < 800) return@setOnClickListener
+            lastSendMs = now
             val t = b.etInput.text.toString().trim()
-            if (t.isNotEmpty() && !generating) send(t)
+            if (t.isNotEmpty()) send(t)
         }
         b.btnPlus.setOnClickListener { toast("Attachments coming soon") }
         b.btnMic.setOnClickListener { toast("Voice input coming soon") }
@@ -142,7 +152,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshSend() {
-        val active = b.etInput.text.toString().isNotBlank() && !generating
+        if (generating) {
+            // Mode stop: tombol kirim jadi pembatal.
+            b.btnSend.setBackgroundResource(R.drawable.btn_circle_white)
+            b.btnSend.setImageResource(R.drawable.ic_stop)
+            b.btnSend.isEnabled = true
+            return
+        }
+        val active = b.etInput.text.toString().isNotBlank()
         b.btnSend.setBackgroundResource(
             if (active) R.drawable.btn_circle_white else R.drawable.btn_circle)
         b.btnSend.setImageResource(
@@ -160,20 +177,19 @@ class MainActivity : AppCompatActivity() {
         generate()
     }
 
-    private fun activeModel() = DummyData.models[selectedModel]
+    private fun activeModel() = AppData.models[selectedModel]
 
     // File lokal untuk (model, quant) aktif; null = wajib download dulu.
     private fun modelFile(m: AiModel): java.io.File? {
         val fn = ModelDownloader.savedFilename(this, m.name, m.quant) ?: return null
-        val f = ModelDownloader.localFile(this, fn)
-        if (!f.exists()) return null
+        val f = ModelDownloader.storedFile(this, fn) ?: return null
         val expected = ModelDownloader.savedTotal(this, m.name, m.quant)
         // Tolak file parsial (mis. sisa download sesi sebelumnya).
-        if (expected > 0 && f.length() < expected) return null
-        return if (f.length() > 0) f else null
+        if (!fn.startsWith("/") && expected > 0 && f.length() < expected) return null
+        return f
     }
 
-    private fun hasReadyModel() = DummyData.models.any { modelFile(it) != null }
+    private fun hasReadyModel() = AppData.models.any { modelFile(it) != null }
 
     private fun refreshBanner() {
         b.bannerNeedModel.visibility = if (hasReadyModel()) View.GONE else View.VISIBLE
@@ -199,6 +215,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         generating = true
+        streamPos = -1
         refreshSend()
         chatAdapter.add(ChatMessage("", false, isTyping = true), b.rvChat)
         val maxTokens = pMaxTokens()
@@ -215,7 +232,9 @@ class MainActivity : AppCompatActivity() {
                 chatAdapter.removeLastTyping()
                 chatAdapter.add(ChatMessage("", false), b.rvChat)
                 aiPos = chatAdapter.items.size - 1
+                streamPos = aiPos
                 LlamaBridge.generateFlow(h, history, maxTokens, temp, topK, topP).collect { tok ->
+                    if (aiPos < 0 || aiPos >= chatAdapter.items.size) return@collect
                     sb.append(tok)
                     chatAdapter.items[aiPos] = ChatMessage(sb.toString(), false)
                     chatAdapter.notifyItemChanged(aiPos)
@@ -236,8 +255,26 @@ class MainActivity : AppCompatActivity() {
             val final = if (aiPos >= 0) chatAdapter.items[aiPos].text else ""
             if (final.isNotBlank()) db.addMessage(convId, "assistant", final)
             generating = false
+            streamPos = -1
             refreshSend()
         }
+    }
+
+    // Batalkan generate yang sedang jalan (tombol Stop).
+    private fun cancelGenerate() {
+        if (!generating) return
+        runCatching { LlamaBridge.cancel() }
+        handler.postDelayed({
+            if (!generating) return@postDelayed // sudah selesai sendiri
+            if (streamPos >= 0 && streamPos < chatAdapter.items.size) {
+                val partial = chatAdapter.items[streamPos].text
+                if (partial.isNotBlank()) db.addMessage(convId, "assistant", "$partial\n[dibatalkan]")
+            }
+            generating = false
+            streamPos = -1
+            refreshSend()
+            toast("Generate dibatalkan")
+        }, 300)
     }
 
     private fun regenerate() {
@@ -285,7 +322,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Filter kategori = dropdown simpel (ganti chips yang makan tempat).
-        val cats = DummyData.categories
+        val cats = AppData.categories
         val catAdapter = ArrayAdapter(this, R.layout.item_quant, cats)
         catAdapter.setDropDownViewResource(R.layout.item_quant_dropdown)
         b.spCategory.adapter = catAdapter
@@ -303,14 +340,15 @@ class MainActivity : AppCompatActivity() {
                 b.drawerLayout.closeDrawer(Gravity.START)
             },
             onDownload = { real -> startDownload(real) },
-            onQuantChange = { real, q -> changeQuant(real, q) }
+            onQuantChange = { real, q -> changeQuant(real, q) },
+            onDelete = { real -> confirmDelete(real) }
         )
         b.rvModels.layoutManager = LinearLayoutManager(this)
         b.rvModels.adapter = modelAdapter
     }
 
     private fun updateModelLabel() {
-        val m = DummyData.models[selectedModel]
+        val m = AppData.models[selectedModel]
         b.tvModelName.text = "${m.shortName} · ${m.quant}"
     }
 
@@ -318,11 +356,11 @@ class MainActivity : AppCompatActivity() {
         selectedModel = real
         modelAdapter.setSelected(real)
         updateModelLabel()
-        toast("Switched to ${DummyData.models[real].shortName}")
+        toast("Switched to ${AppData.models[real].shortName}")
     }
 
     private fun changeQuant(real: Int, quant: String) {
-        val m = DummyData.models[real]
+        val m = AppData.models[real]
         m.quant = quant
         m.downloading = false
         m.progress = 0
@@ -333,19 +371,76 @@ class MainActivity : AppCompatActivity() {
         if (real == selectedModel) updateModelLabel()
     }
 
-    // Tandai yang file-nya sudah lengkap di disk.
+    // Tandai yang file-nya sudah lengkap di disk (termasuk hasil scan folder).
     private fun scanDownloaded() {
-        DummyData.models.forEach { m ->
+        ModelDownloader.scanDisk(this)
+        AppData.models.forEach { m ->
             m.quant = ModelDownloader.savedQuant(this, m.name)
             m.downloaded = modelFile(m) != null
             if (!m.downloaded) m.downloading = false
         }
-        val first = DummyData.models.indexOfFirst { it.downloaded }
+        val first = AppData.models.indexOfFirst { it.downloaded }
         if (first >= 0) selectedModel = first
     }
 
+    // Hapus model yang sudah diunduh (file + mapping), dengan konfirmasi.
+    private fun confirmDelete(real: Int) {
+        val m = AppData.models[real]
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Hapus model?")
+            .setMessage("${m.shortName} (${m.quant}) akan dihapus dari penyimpanan.")
+            .setPositiveButton("Hapus") { _, _ -> deleteModel(real) }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun deleteModel(real: Int) {
+        val m = AppData.models[real]
+        val fn = ModelDownloader.savedFilename(this, m.name, m.quant)
+        val f = if (fn != null) ModelDownloader.storedFile(this, fn) else null
+        val ok = f?.let { runCatching { it.delete() }.getOrDefault(false) } ?: false
+        ModelDownloader.saveFilename(this, m.name, m.quant, "")
+        ModelDownloader.saveTotal(this, m.name, m.quant, 0L)
+        m.downloaded = false
+        m.downloading = false
+        m.progress = 0
+        // Bila model aktif yang dihapus: lepas handle native.
+        if (real == selectedModel && modelHandle != 0L) {
+            runCatching { LlamaBridge.unloadModel(modelHandle) }
+            modelHandle = 0L
+            handleFor = ""
+        }
+        modelAdapter.notifyDataSetChanged()
+        refreshBanner()
+        toast(if (ok || f == null) "${m.shortName} dihapus" else "Gagal menghapus file")
+    }
+
     private fun startDownload(real: Int) {
-        val m = DummyData.models[real]
+        val m = AppData.models[real]
+        // Folder shared butuh izin All-files; arahkan ke system settings bila belum ada.
+        if (ModelDownloader.needsAllFilesAccess(this)) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Izin akses file")
+                .setMessage(
+                    "Folder model (${ModelDownloader.modelsDir(this).absolutePath}) " +
+                    "butuh izin akses file. Beri izin dulu, lalu tap Get lagi."
+                )
+                .setPositiveButton("Buka Pengaturan") { _, _ ->
+                    try {
+                        startActivity(
+                            Intent(
+                                android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                android.net.Uri.parse("package:$packageName")
+                            )
+                        )
+                    } catch (_: Exception) {
+                        toast("Buka manual: Settings > Apps > Llama.cpp > izin file")
+                    }
+                }
+                .setNegativeButton("Batal", null)
+                .show()
+            return
+        }
         // Wajib isi HF token dulu sebelum boleh download.
         if (ModelDownloader.getToken(this).isBlank()) {
             MaterialAlertDialogBuilder(this)
@@ -423,7 +518,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pollDownload(real: Int, id: Long) {
-        val m = DummyData.models[real]
+        val m = AppData.models[real]
         val tick = object : Runnable {
             override fun run() {
                 val p = ModelDownloader.query(this@MainActivity, id)

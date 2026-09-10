@@ -28,7 +28,7 @@ data class ChatMessage(
     val isTyping: Boolean = false
 )
 
-object DummyData {
+object AppData {
     val models = mutableListOf(
         AiModel("SmolLM2-135M-Instruct", "SmolLM2-135M", "Micro Size", "0.13B", "140-200MB", "~400MB", "HuggingFaceTB/SmolLM2-135M-Instruct-GGUF", 512),
         AiModel("SmolLM2-360M-Instruct", "SmolLM2-360M", "Micro Size", "0.36B", "250-350MB", "~700MB", "HuggingFaceTB/SmolLM2-360M-Instruct-GGUF", 512),
