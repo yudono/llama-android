@@ -90,6 +90,39 @@
             android:layout_height="1dp"
             android:background="@color/divider" />
 
+        <!-- Banner wajib download (muncul bila belum ada model siap) -->
+        <LinearLayout
+            android:id="@+id/banner_need_model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="12dp"
+            android:background="@drawable/bg_card"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="13dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Download model dulu untuk mulai chat"
+                android:textColor="@color/text"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_open_models"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:minWidth="0dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="Model"
+                android:textColor="@color/accent"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <!-- Daftar chat -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_chat"
@@ -222,11 +255,24 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
+            android:letterSpacing="0"
             android:text="@string/new_chat"
             android:textColor="@color/accent"
             app:icon="@drawable/ic_plus"
             app:iconTint="@color/accent"
             app:strokeColor="@color/accent" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_settings"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:letterSpacing="0"
+            android:text="Settings"
+            android:textColor="@color/text_dim"
+            app:icon="@drawable/ic_settings"
+            app:iconTint="@color/text_dim" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -237,12 +283,13 @@
             android:textColor="@color/text_dim"
             android:textSize="13sp" />
 
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/chip_categories"
+        <Spinner
+            android:id="@+id/sp_category"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:singleSelection="true"
-            app:selectionRequired="true" />
+            android:layout_height="44dp"
+            android:background="@drawable/bg_input"
+            android:paddingStart="12dp"
+            android:popupBackground="@color/card" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_models"
@@ -251,28 +298,6 @@
             android:layout_weight="1"
             android:layout_marginTop="8dp"
             android:clipToPadding="false" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="HF token (untuk download model)"
-            android:textColor="@color/text_faint"
-            android:textSize="12sp" />
-
-        <EditText
-            android:id="@+id/et_token"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/bg_input"
-            android:hint="hf_xxxxxxxx"
-            android:inputType="textVisiblePassword"
-            android:padding="12dp"
-            android:singleLine="true"
-            android:textColor="@color/text"
-            android:textColorHint="@color/text_faint"
-            android:textSize="13sp" />
 
         <TextView
             android:layout_width="wrap_content"

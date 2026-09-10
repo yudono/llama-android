@@ -27,6 +27,8 @@ object LlamaBridge {
         texts: Array<String>,
         maxTokens: Int,
         temperature: Float,
+        topK: Int,
+        topP: Float,
         cb: TokenCallback
     ): Int
 
@@ -35,7 +37,9 @@ object LlamaBridge {
         handle: Long,
         history: List<Pair<String, String>>,
         maxTokens: Int,
-        temperature: Float
+        temperature: Float,
+        topK: Int,
+        topP: Float
     ): Flow<String> = callbackFlow {
         withContext(Dispatchers.IO) {
             generate(
@@ -44,6 +48,8 @@ object LlamaBridge {
                 history.map { it.second }.toTypedArray(),
                 maxTokens,
                 temperature,
+                topK,
+                topP,
                 TokenCallback { trySend(it).isSuccess }
             )
             close()

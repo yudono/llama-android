@@ -3,6 +3,9 @@ package com.llamacpp.local
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
@@ -12,7 +15,8 @@ import com.google.android.material.card.MaterialCardView
 class ModelAdapter(
     private var selectedPos: Int,
     private val onSelect: (Int) -> Unit,
-    private val onDownload: (Int) -> Unit
+    private val onDownload: (Int) -> Unit,
+    private val onQuantChange: (Int, String) -> Unit
 ) : RecyclerView.Adapter<ModelAdapter.VH>() {
 
     var shown: List<AiModel> = DummyData.models
@@ -35,11 +39,27 @@ class ModelAdapter(
         val m = shown[pos]
         val real = realPosition(pos)
         h.name.text = m.name
-        h.meta.text = "${m.paramSize}  |  ${m.fileSize}  |  RAM ${m.ram}"
+        h.meta.text = "${m.quant}  |  ${m.paramSize}  |  ${m.fileSize}  |  RAM ${m.ram}"
         h.card.setCardBackgroundColor(
             ContextCompat.getColor(h.itemView.context,
                 if (real == selectedPos) R.color.card_selected else R.color.card)
         )
+
+        // Dropdown quant (default Q8_0). Ganti -> unduh file quant tsb.
+        val qa = ArrayAdapter(h.itemView.context, R.layout.item_quant, AiModel.QUANTS)
+        qa.setDropDownViewResource(R.layout.item_quant_dropdown)
+        h.quant.adapter = qa
+        h.quant.onItemSelectedListener = null
+        h.quant.setSelection(AiModel.QUANTS.indexOf(m.quant).coerceAtLeast(0), false)
+        h.quant.isEnabled = !m.downloading
+        h.quant.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, i: Int, id: Long) {
+                val q = AiModel.QUANTS[i]
+                if (q != m.quant) onQuantChange(real, q)
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+
         when {
             m.downloaded -> {
                 h.status.text = if (real == selectedPos) "Active" else "Ready to use"
@@ -76,6 +96,7 @@ class ModelAdapter(
         val card: MaterialCardView = v.findViewById(R.id.card)
         val name: TextView = v.findViewById(R.id.tv_name)
         val meta: TextView = v.findViewById(R.id.tv_meta)
+        val quant: Spinner = v.findViewById(R.id.sp_quant)
         val status: TextView = v.findViewById(R.id.tv_status)
         val action: MaterialButton = v.findViewById(R.id.btn_action)
     }

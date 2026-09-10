@@ -32,6 +32,32 @@
             android:textColor="@color/text_dim"
             android:textSize="12sp" />
 
+        <!-- Pilih quantization (ala `llama serve -hf repo:QUANT`) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Quant"
+                android:textColor="@color/text_dim"
+                android:textSize="12sp" />
+
+            <Spinner
+                android:id="@+id/sp_quant"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_input"
+                android:paddingStart="10dp"
+                android:popupBackground="@color/card" />
+        </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -1,5 +1,6 @@
 package com.llamacpp.local
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -7,12 +8,14 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.content.ContextCompat
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.material.chip.Chip
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.llamacpp.local.databinding.ActivityMainBinding
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -35,10 +38,12 @@ class MainActivity : AppCompatActivity() {
     private var modelHandle = 0L
     private var handleFor = ""
 
-    companion object {
-        const val MAX_TOKENS = 128
-        const val TEMPERATURE = 0.7f
-    }
+    // Sampling dari Settings (fallback = default bila belum diubah).
+    private fun prefs() = PreferenceManager.getDefaultSharedPreferences(this)
+    private fun pTemperature() = prefs().getInt("temperature", 70) / 100f
+    private fun pTopK() = prefs().getInt("top_k", 40).coerceAtLeast(1)
+    private fun pTopP() = (prefs().getInt("top_p", 95) / 100f).coerceIn(0.01f, 1f)
+    private fun pMaxTokens() = prefs().getInt("max_tokens", 96) + 32
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
@@ -53,9 +58,19 @@ class MainActivity : AppCompatActivity() {
         setupDrawer()
         openLastOrNew()
         updateModelLabel()
+        refreshBanner()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // File bisa berubah saat app di background (DownloadManager jalan terus).
+        scanDownloaded()
+        modelAdapter.notifyDataSetChanged()
+        refreshBanner()
     }
 
     // ---------- Session & SQLite ----------
+    // Tiap New Chat = conversation baru = session + context window baru.
     private fun openLastOrNew() {
         val last = db.lastConversation()
         if (last != null) {
@@ -73,7 +88,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun newConversation() {
-        convId = db.newConversation(DummyData.models[selectedModel].name)
+        val m = DummyData.models[selectedModel]
+        convId = db.newConversation(m.name, m.quant, m.mobileCtx)
         chatAdapter.items.clear()
         chatAdapter.notifyDataSetChanged()
         val greet = ChatMessage("Hey! How can I help?", false)
@@ -121,6 +137,7 @@ class MainActivity : AppCompatActivity() {
         }
         b.btnPlus.setOnClickListener { toast("Attachments coming soon") }
         b.btnMic.setOnClickListener { toast("Voice input coming soon") }
+        b.btnOpenModels.setOnClickListener { b.drawerLayout.openDrawer(Gravity.START) }
         refreshSend()
     }
 
@@ -145,10 +162,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun activeModel() = DummyData.models[selectedModel]
 
+    // File lokal untuk (model, quant) aktif; null = wajib download dulu.
     private fun modelFile(m: AiModel): java.io.File? {
-        val fn = ModelDownloader.savedFilename(this, m.name) ?: return null
+        val fn = ModelDownloader.savedFilename(this, m.name, m.quant) ?: return null
         val f = ModelDownloader.localFile(this, fn)
-        return if (f.exists() && f.length() > 0) f else null
+        if (!f.exists()) return null
+        val expected = ModelDownloader.savedTotal(this, m.name, m.quant)
+        // Tolak file parsial (mis. sisa download sesi sebelumnya).
+        if (expected > 0 && f.length() < expected) return null
+        return if (f.length() > 0) f else null
+    }
+
+    private fun hasReadyModel() = DummyData.models.any { modelFile(it) != null }
+
+    private fun refreshBanner() {
+        b.bannerNeedModel.visibility = if (hasReadyModel()) View.GONE else View.VISIBLE
     }
 
     private fun ensureHandle(m: AiModel, file: java.io.File): Long {
@@ -173,6 +201,10 @@ class MainActivity : AppCompatActivity() {
         generating = true
         refreshSend()
         chatAdapter.add(ChatMessage("", false, isTyping = true), b.rvChat)
+        val maxTokens = pMaxTokens()
+        val temp = pTemperature()
+        val topK = pTopK()
+        val topP = pTopP()
         scope.launch {
             val sb = StringBuilder()
             var aiPos = -1
@@ -180,14 +212,12 @@ class MainActivity : AppCompatActivity() {
                 val history = promptHistory()
                 val h = ensureHandle(m, file)
                 if (h == 0L) throw IllegalStateException("loadModel gagal")
-                // Ganti typing jadi bubble kosong yang di-streaming.
                 chatAdapter.removeLastTyping()
                 chatAdapter.add(ChatMessage("", false), b.rvChat)
                 aiPos = chatAdapter.items.size - 1
-                LlamaBridge.generateFlow(h, history, MAX_TOKENS, TEMPERATURE).collect { tok ->
+                LlamaBridge.generateFlow(h, history, maxTokens, temp, topK, topP).collect { tok ->
                     sb.append(tok)
-                    chatAdapter.items[aiPos] =
-                        ChatMessage(sb.toString(), false)
+                    chatAdapter.items[aiPos] = ChatMessage(sb.toString(), false)
                     chatAdapter.notifyItemChanged(aiPos)
                     b.rvChat.scrollToPosition(aiPos)
                 }
@@ -225,9 +255,8 @@ class MainActivity : AppCompatActivity() {
     private fun warnNeedModel(m: AiModel) {
         chatAdapter.add(
             ChatMessage(
-                "Model \"${m.shortName}\" belum diunduh.\n\n" +
-                "Buka menu kiri → tap Get pada model untuk download dulu " +
-                "(butuh HF token gratis, isi di bagian bawah drawer).",
+                "Model \"${m.shortName}\" (${m.quant}) belum diunduh.\n\n" +
+                "Buka menu kiri → tap Get pada model untuk download dulu.",
                 false
             ),
             b.rvChat
@@ -251,26 +280,20 @@ class MainActivity : AppCompatActivity() {
             newChat()
             b.drawerLayout.closeDrawer(Gravity.START)
         }
+        b.btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
 
-        b.etToken.setText(ModelDownloader.getToken(this))
-        b.etToken.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, a: Int, b2: Int, c: Int) {}
-            override fun onTextChanged(s: CharSequence?, a: Int, b2: Int, c: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                ModelDownloader.setToken(this@MainActivity, s.toString())
+        // Filter kategori = dropdown simpel (ganti chips yang makan tempat).
+        val cats = DummyData.categories
+        val catAdapter = ArrayAdapter(this, R.layout.item_quant, cats)
+        catAdapter.setDropDownViewResource(R.layout.item_quant_dropdown)
+        b.spCategory.adapter = catAdapter
+        b.spCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, i: Int, id: Long) {
+                modelAdapter.filter(cats[i])
             }
-        })
-
-        DummyData.categories.forEachIndexed { i, cat ->
-            val chip = Chip(this).apply {
-                text = cat
-                isCheckable = true
-                isChecked = i == 0
-                setChipBackgroundColorResource(R.color.chip_bg)
-                setTextColor(ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text))
-                setOnClickListener { modelAdapter.filter(cat) }
-            }
-            b.chipCategories.addView(chip)
+            override fun onNothingSelected(p: AdapterView<*>?) {}
         }
 
         modelAdapter = ModelAdapter(
@@ -279,14 +302,16 @@ class MainActivity : AppCompatActivity() {
                 switchModel(real)
                 b.drawerLayout.closeDrawer(Gravity.START)
             },
-            onDownload = { real -> startDownload(real) }
+            onDownload = { real -> startDownload(real) },
+            onQuantChange = { real, q -> changeQuant(real, q) }
         )
         b.rvModels.layoutManager = LinearLayoutManager(this)
         b.rvModels.adapter = modelAdapter
     }
 
     private fun updateModelLabel() {
-        b.tvModelName.text = DummyData.models[selectedModel].shortName
+        val m = DummyData.models[selectedModel]
+        b.tvModelName.text = "${m.shortName} · ${m.quant}"
     }
 
     private fun switchModel(real: Int) {
@@ -296,11 +321,24 @@ class MainActivity : AppCompatActivity() {
         toast("Switched to ${DummyData.models[real].shortName}")
     }
 
-    // Tandai yang file-nya sudah ada di disk.
+    private fun changeQuant(real: Int, quant: String) {
+        val m = DummyData.models[real]
+        m.quant = quant
+        m.downloading = false
+        m.progress = 0
+        ModelDownloader.saveQuant(this, m.name, quant)
+        // Jika file quant ini sudah ada di disk, langsung siap pakai.
+        m.downloaded = modelFile(m) != null
+        modelAdapter.notifyDataSetChanged()
+        if (real == selectedModel) updateModelLabel()
+    }
+
+    // Tandai yang file-nya sudah lengkap di disk.
     private fun scanDownloaded() {
         DummyData.models.forEach { m ->
-            val f = modelFile(m)
-            m.downloaded = f != null
+            m.quant = ModelDownloader.savedQuant(this, m.name)
+            m.downloaded = modelFile(m) != null
+            if (!m.downloaded) m.downloading = false
         }
         val first = DummyData.models.indexOfFirst { it.downloaded }
         if (first >= 0) selectedModel = first
@@ -308,25 +346,65 @@ class MainActivity : AppCompatActivity() {
 
     private fun startDownload(real: Int) {
         val m = DummyData.models[real]
-        if (m.downloading || m.downloaded) return
+        // Wajib isi HF token dulu sebelum boleh download.
+        if (ModelDownloader.getToken(this).isBlank()) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Butuh HF token")
+                .setMessage(
+                    "Download model dari HuggingFace butuh token gratis.\n\n" +
+                    "Isi dulu di Settings, lalu tap Get lagi."
+                )
+                .setPositiveButton("Buka Settings") { _, _ ->
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                }
+                .setNegativeButton("Batal", null)
+                .show()
+            return
+        }
+        if (m.downloading || modelFile(m) != null) {            if (modelFile(m) != null) {
+                m.downloaded = true
+                modelAdapter.notifyDataSetChanged()
+                refreshBanner()
+            }
+            return
+        }
+        // Hapus sisa parsial agar tak dikira selesai.
+        ModelDownloader.savedFilename(this, m.name, m.quant)?.let { fn ->
+            ModelDownloader.localFile(this, fn).takeIf { it.exists() }?.delete()
+        }
         m.downloading = true
         m.progress = 0
         modelAdapter.notifyDataSetChanged()
         Thread {
             try {
-                var fn = ModelDownloader.savedFilename(this, m.name)
+                var fn = ModelDownloader.savedFilename(this, m.name, m.quant)
                 if (fn == null) {
-                    val (resolved, needToken) = ModelDownloader.resolve(this, m.repo, m.quant)
-                    if (resolved == null) {
+                    val r = ModelDownloader.resolve(this, m.repo, m.quant)
+                    if (r.file == null) {
+                        val msg = when {
+                            r.needToken -> "Isi HF token di Settings dulu"
+                            !r.reached -> "Periksa koneksi internet, lalu coba lagi"
+                            else -> "Tak ada file GGUF yang cocok untuk model ini"
+                        }
                         handler.post {
                             m.downloading = false
                             modelAdapter.notifyDataSetChanged()
-                            toast(if (needToken) "Isi HF token dulu (drawer bawah)" else "File GGUF tak ketemu")
+                            toast(msg)
+                            if (r.needToken) b.drawerLayout.closeDrawer(Gravity.START)
                         }
                         return@Thread
                     }
-                    fn = resolved
-                    ModelDownloader.saveFilename(this, m.name, fn)
+                    if (r.fellBack && r.quant != m.quant) {
+                        m.quant = r.quant
+                        ModelDownloader.saveQuant(this, m.name, r.quant)
+                        handler.post {
+                            modelAdapter.notifyDataSetChanged()
+                            updateModelLabel()
+                            toast("${m.shortName}: pakai ${r.quant} (lebih ringan/tersedia)")
+                        }
+                    }
+                    fn = r.file
+                    ModelDownloader.saveFilename(this, m.name, m.quant, fn)
                 }
                 val id = ModelDownloader.enqueue(
                     this, ModelDownloader.downloadUrl(m.repo, fn),
@@ -357,13 +435,15 @@ class MainActivity : AppCompatActivity() {
                     }
                     return
                 }
+                if (p.total > 0) ModelDownloader.saveTotal(this@MainActivity, m.name, m.quant, p.total)
                 if (p.status == android.app.DownloadManager.STATUS_SUCCESSFUL) {
                     m.downloading = false
                     m.downloaded = true
                     m.progress = 100
                     handler.post {
                         modelAdapter.notifyDataSetChanged()
-                        toast("${m.shortName} downloaded")
+                        refreshBanner()
+                        toast("${m.shortName} ${m.quant} downloaded")
                     }
                     return
                 }

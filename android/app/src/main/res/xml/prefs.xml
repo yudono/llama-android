@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="HuggingFace"
+        app:iconSpaceReserved="false">
+
+        <EditTextPreference
+            android:key="hf_token"
+            android:title="HF token"
+            android:summary="Token untuk download model (gratis, tipe Read). Buat di huggingface.co/settings/tokens"
+            android:dialogTitle="HF token"
+            android:inputType="textVisiblePassword"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Storage"
+        app:iconSpaceReserved="false">
+
+        <EditTextPreference
+            android:key="models_dir"
+            android:title="Folder model"
+            android:summary="Default /sdcard/models. Butuh izin akses file; tanpa izin dipakai folder privat aplikasi."
+            android:defaultValue="/sdcard/models"
+            android:dialogTitle="Folder model"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Sampling"
+        app:iconSpaceReserved="false">
+
+        <SeekBarPreference
+            android:key="temperature"
+            android:title="Temperature (0-200 = 0.00-2.00)"
+            android:defaultValue="70"
+            android:max="200"
+            app:showSeekBarValue="true"
+            app:iconSpaceReserved="false" />
+
+        <SeekBarPreference
+            android:key="top_k"
+            android:title="Top-K (1-100)"
+            android:defaultValue="40"
+            android:max="100"
+            app:showSeekBarValue="true"
+            app:iconSpaceReserved="false" />
+
+        <SeekBarPreference
+            android:key="top_p"
+            android:title="Top-P (1-100 = 0.01-1.00)"
+            android:defaultValue="95"
+            android:max="100"
+            app:showSeekBarValue="true"
+            app:iconSpaceReserved="false" />
+
+        <SeekBarPreference
+            android:key="max_tokens"
+            android:title="Max tokens (32-512)"
+            android:defaultValue="96"
+            android:max="480"
+            app:showSeekBarValue="true"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+</PreferenceScreen>

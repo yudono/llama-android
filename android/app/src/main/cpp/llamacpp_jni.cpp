@@ -75,7 +75,7 @@ JNIEXPORT jint JNICALL
 Java_com_llamacpp_local_LlamaBridge_generate(
         JNIEnv* env, jobject, jlong h,
         jobjectArray jroles, jobjectArray jtexts,
-        jint maxTokens, jfloat temperature, jobject cb) {
+        jint maxTokens, jfloat temperature, jint topK, jfloat topP, jobject cb) {
     auto* nm = reinterpret_cast<NativeModel*>(h);
     if (!nm || !nm->model) return -1;
     llama_model* model = nm->model;
@@ -135,8 +135,9 @@ Java_com_llamacpp_local_LlamaBridge_generate(
 
     std::mt19937 rng(1234u);
     llama_sampler* smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
-    llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
-    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.95f, 1));
+    if (topK > 1) llama_sampler_chain_add(smpl, llama_sampler_init_top_k(topK));
+    float p = topP <= 0.0f ? 0.95f : (topP > 1.0f ? 1.0f : topP);
+    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(p, 1));
     llama_sampler_chain_add(smpl, llama_sampler_init_temp(temperature));
     llama_sampler_chain_add(smpl, llama_sampler_init_dist(rng()));
 
