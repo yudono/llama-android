@@ -1,4 +1,4 @@
-// IronAI - Local AI Inference Engine
+// llama.cpp - Local Inference Engine
 // Built with Dear ImGui + Android NativeActivity + OpenGL ES 3
 
 #include "imgui.h"
@@ -15,7 +15,7 @@
 #include <cmath>
 #include <cstdlib>
 
-#define LOG_TAG "IronAI"
+#define LOG_TAG "llama.cpp"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
@@ -36,17 +36,17 @@ static float generateTimer = 0.0f;
 static int selectedTab = 0;
 
 static const char* modelNames[] = {
-    "IronAI-1B (Tiny)",
-    "IronAI-3B (Base)",
-    "IronAI-7B (Medium)",
-    "IronAI-13B (Large)",
-    "IronAI-70B (Huge)"
+    "TinyLlama-1.1B (Q4_K_M)",
+    "Phi-2-2.7B (Q4_K_M)",
+    "Llama-2-7B (Q4_K_M)",
+    "Llama-2-13B (Q4_K_M)",
+    "CodeLlama-7B (Q4_K_M)"
 };
 static const int modelCount = 5;
 
 static const char* dummyResponses[] = {
-    "Halo! Saya adalah AI assistant yang berjalan di perangkat Anda. "
-    "Ini adalah versi demo. Fitur yang direncanakan:\n\n"
+    "Halo! Saya adalah AI assistant yang berjalan di perangkat Anda menggunakan "
+    "llama.cpp inference engine. Ini adalah versi demo. Fitur yang direncanakan:\n\n"
     "- Chat & Conversation\n"
     "- Text Generation\n"
     "- Code Assistance\n"
@@ -54,7 +54,7 @@ static const char* dummyResponses[] = {
 
     "Pertanyaan menarik! Dalam versi production, model ini akan "
     "menggunakan arsitektur Transformer dengan optimasi untuk mobile device. "
-    "Inference akan dilakukan menggunakan quantized weights (INT4/INT8).",
+    "Inference dilakukan menggunakan GGUF quantized weights (Q4_K_M).",
 
     "Berikut adalah contoh respons AI:\n\n"
     "The quick brown fox jumps over the lazy dog.\n"
@@ -62,7 +62,9 @@ static const char* dummyResponses[] = {
     "Kalimat-kalimat di atas adalah pangram.",
 
     "Statistik Device:\n\n"
-    "- Model: IronAI-7B (Demo)\n"
+    "- Engine: llama.cpp\n"
+    "- Model: TinyLlama-1.1B (Demo)\n"
+    "- Quantization: Q4_K_M\n"
     "- Platform: Android (NativeActivity)\n"
     "- UI: Dear ImGui + OpenGL ES 3\n"
     "- Backend: 100% C++\n"
@@ -207,7 +209,7 @@ void Init(struct android_app* app)
     ImGui_ImplOpenGL3_Init("#version 300 es");
 
     g_Initialized = true;
-    LOGI("IronAI initialized successfully");
+    LOGI("llama.cpp initialized successfully");
 }
 
 void MainLoopStep()
@@ -278,12 +280,12 @@ void MainLoopStep()
 
     // Header
     ImGui::SetCursorPosX(pad);
-    ImGui::TextColored(ImVec4(0.00f, 0.71f, 0.63f, 1.0f), "[AI]");
+    ImGui::TextColored(ImVec4(0.00f, 0.71f, 0.63f, 1.0f), "[LLM]");
     ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.90f, 0.90f, 0.94f, 1.0f), "IronAI");
+    ImGui::TextColored(ImVec4(0.90f, 0.90f, 0.94f, 1.0f), "llama.cpp");
 
     ImGui::SetCursorPosX(pad);
-    ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f), "Local AI Inference Engine");
+    ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f), "Local Inference Engine");
 
     ImGui::SetCursorPosX(pad);
     ImGui::Spacing();
@@ -422,6 +424,8 @@ void MainLoopStep()
         ImGui::SetCursorPosX(pad);
         ImGui::TextColored(ImVec4(0.90f, 0.90f, 0.94f, 1.0f), "Device Info");
         ImGui::SetCursorPosX(pad);
+        ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f), "Engine: llama.cpp");
+        ImGui::SetCursorPosX(pad);
         ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f), "Platform: NativeActivity + OpenGL ES 3");
         ImGui::SetCursorPosX(pad);
         ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f), "Backend: 100%% C++");
@@ -434,13 +438,13 @@ void MainLoopStep()
     {
         // --- ABOUT ---
         ImGui::SetCursorPosX(pad);
-        ImGui::TextColored(ImVec4(0.00f, 0.71f, 0.63f, 1.0f), "[AI]");
+        ImGui::TextColored(ImVec4(0.00f, 0.71f, 0.63f, 1.0f), "[LLM]");
 
         ImGui::SetCursorPosX(pad);
-        ImGui::TextColored(ImVec4(0.90f, 0.90f, 0.94f, 1.0f), "IronAI");
+        ImGui::TextColored(ImVec4(0.90f, 0.90f, 0.94f, 1.0f), "llama.cpp");
 
         ImGui::SetCursorPosX(pad);
-        ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f), "Local AI Inference Engine");
+        ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f), "Local Inference Engine");
 
         ImGui::SetCursorPosX(pad);
         ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f), "Version 0.1.0 (Demo)");
@@ -453,13 +457,14 @@ void MainLoopStep()
         ImGui::SetCursorPosX(pad);
         ImGui::PushTextWrapPos(pad + contentW);
         ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f),
-            "IronAI adalah aplikasi inference AI yang dirancang untuk berjalan "
-            "sepenuhnya di perangkat mobile tanpa koneksi internet.");
+            "Aplikasi inference AI yang dirancang untuk berjalan "
+            "sepenuhnya di perangkat mobile tanpa koneksi internet menggunakan "
+            "llama.cpp engine.");
         ImGui::Spacing();
         ImGui::SetCursorPosX(pad);
         ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f),
-            "Menggunakan NativeActivity + Dear ImGui untuk performa maksimal "
-            "dan ukuran APK yang sangat ringan (~3 MB).");
+            "Mendukung GGUF quantized models (Q2_K hingga Q8_0) "
+            "untuk performa optimal di mobile device.");
         ImGui::Spacing();
         ImGui::SetCursorPosX(pad);
         ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.63f, 1.0f),
@@ -468,7 +473,7 @@ void MainLoopStep()
 
         ImGui::Spacing();
         ImGui::SetCursorPosX(pad);
-        ImGui::TextColored(ImVec4(0.00f, 0.71f, 0.63f, 1.0f), "github.com/ironai");
+        ImGui::TextColored(ImVec4(0.00f, 0.71f, 0.63f, 1.0f), "github.com/ggerganov/llama.cpp");
     }
 
     ImGui::End(); // Main window
@@ -505,7 +510,7 @@ void Shutdown()
     g_EglSurface = EGL_NO_SURFACE;
     ANativeWindow_release(g_App->window);
     g_Initialized = false;
-    LOGI("IronAI shut down");
+    LOGI("llama.cpp shut down");
 }
 
 static int ShowSoftKeyboardInput()

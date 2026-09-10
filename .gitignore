@@ -1,6 +1,12 @@
 # Build output
 build/
 
+# External dependencies
+raylib/
+tmp/
+imgui/
+imgui-android/
+
 # IDE
 .vscode/
 .idea/

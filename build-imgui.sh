@@ -2,7 +2,7 @@
 set -e
 
 echo "============================================"
-echo "  IronAI - ImGui Android Build"
+echo "  llama.cpp - Local Inference Build"
 echo "============================================"
 
 PROJECT_DIR="/Users/yudonoputro/Documents/projects/simple-app"
@@ -12,8 +12,8 @@ BUILD_TOOLS=$(ls -d "$ANDROID_HOME/build-tools/"* | sort -V | tail -1)
 BUILD_TOOLS_VERSION=$(basename "$BUILD_TOOLS")
 IMGUI_SRC="/tmp/imgui-android"
 
-APP_NAME="IronAI"
-PACKAGE="com.ironai.app"
+APP_NAME="llamacpp"
+PACKAGE="com.llamacpp.local"
 CC="$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android29-clang++"
 
 BUILD_DIR="$PROJECT_DIR/build/android"
@@ -107,10 +107,10 @@ mkdir -p "$APP_BUILD/apk"
 cp "$BUILD_DIR/arm64-v8a/lib${APP_NAME}.so" "$APP_BUILD/"
 
 # Create AndroidManifest.xml
-cat > "$APP_BUILD/src/main/AndroidManifest.xml" << 'EOF'
+cat > "$APP_BUILD/src/main/AndroidManifest.xml" << EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.ironai.app">
+    package="$PACKAGE">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
     <uses-feature android:glEsVersion="0x00030000" />
@@ -131,7 +131,7 @@ cat > "$APP_BUILD/src/main/AndroidManifest.xml" << 'EOF'
 
             <meta-data
                 android:name="android.app.lib_name"
-                android:value="IronAI" />
+                android:value="$APP_NAME" />
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -143,10 +143,10 @@ cat > "$APP_BUILD/src/main/AndroidManifest.xml" << 'EOF'
 EOF
 
 # Create strings.xml
-cat > "$APP_BUILD/src/main/res/values/strings.xml" << 'EOF'
+cat > "$APP_BUILD/src/main/res/values/strings.xml" << EOF
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IronAI</string>
+    <string name="app_name">llama.cpp</string>
 </resources>
 EOF
 
@@ -226,5 +226,5 @@ adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 
 echo ""
 echo "============================================"
-echo "  IronAI installed and running!"
+echo "  llama.cpp installed and running!"
 echo "============================================"

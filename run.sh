@@ -2,8 +2,11 @@
 set -e
 
 echo "============================================"
-echo "  IronAI - Quick Run"
+echo "  llama.cpp - Quick Build & Install"
 echo "============================================"
 
-# Run the full build process
-bash "$(dirname "$0")/build.sh"
+# Uninstall old version first
+adb uninstall com.ironai.app 2>/dev/null || true
+
+# Run the full build
+bash "$(dirname "$0")/build-imgui.sh"

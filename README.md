@@ -1,6 +1,6 @@
-# IronAI - Local AI Inference Engine
+# llama.cpp - Local AI Inference Engine
 
-A dummy UI application for AI inference on smartphones, built with **NativeActivity + Raylib + RayGUI**.
+A dummy UI application for local AI inference on smartphones, built with **Dear ImGui + Android NativeActivity + OpenGL ES 3**.
 
 ## Features
 
@@ -8,15 +8,16 @@ A dummy UI application for AI inference on smartphones, built with **NativeActiv
 - Dark theme UI with modern design
 - Mobile-first responsive layout
 - Tab-based navigation (Chat, Settings, About)
-- Simulated AI inference responses
-- APK size: ~2-3 MB
+- Simulated inference responses
+- Uses llama.cpp engine architecture
+- APK size: ~2.8 MB
 
 ## Prerequisites
 
 ### For Android Build
 - Android SDK (API 34)
 - Android NDK (28.2.13676358 or compatible)
-- Raylib source code
+- Dear ImGui source code
 
 ### For Desktop Testing
 - Raylib installed (via Homebrew on macOS or apt on Linux)
@@ -33,8 +34,8 @@ A dummy UI application for AI inference on smartphones, built with **NativeActiv
 ### Build for Android
 
 ```bash
-# Install Raylib if you haven't
-git clone https://github.com/raysan5/raylib.git ~/raylib
+# Install ImGui if you haven't
+git clone https://github.com/ocornut/imgui.git /tmp/imgui-android
 
 # Build and install to device
 ./run.sh
@@ -44,18 +45,17 @@ git clone https://github.com/raysan5/raylib.git ~/raylib
 
 ```bash
 # Set environment variables
-export RAYLIB_PATH=~/raylib/src
-export ANDROID_HOME=~/Android/Sdk
-export ANDROID_NDK=$ANDROID_HOME/ndk/26.1.10909125
+export ANDROID_HOME=~/Library/Android/sdk
+export ANDROID_NDK=$ANDROID_HOME/ndk/28.2.13676358
 
 # Build
-make android
+./build-imgui.sh
 ```
 
 ## Project Structure
 
 ```
-ironai/
+llama.cpp/
 ├── src/
 │   └── main.cpp              # Main application (UI + Logic)
 ├── android/
@@ -65,7 +65,8 @@ ironai/
 │   ├── build.gradle.kts      # Project-level config
 │   ├── settings.gradle.kts   # Gradle settings
 │   └── gradle.properties     # Gradle properties
-├── build.sh                  # Full build script
+├── build-imgui.sh            # Main build script
+├── build.sh                  # Build script
 ├── run.sh                    # Quick build & install
 ├── run-desktop.sh            # Desktop test build
 ├── Makefile                  # Make build system
@@ -75,7 +76,7 @@ ironai/
 ## UI Components
 
 ### Chat Tab
-- Model selector dropdown
+- Model selector dropdown (TinyLlama, Phi-2, Llama-2, CodeLlama)
 - Prompt input area
 - Generate button with loading state
 - Quick actions (Clear, Copy, Share)
@@ -95,15 +96,23 @@ ironai/
 ## Architecture
 
 - **NativeActivity**: Android's native C++ activity (no Java/Kotlin)
-- **Raylib**: Minimal game library for window/input/rendering
-- **RayGUI**: Immediate mode GUI library for Raylib
+- **Dear ImGui**: Immediate mode GUI library
+- **OpenGL ES 3**: Graphics rendering
+- **llama.cpp**: Local inference engine (simulated in demo)
+
+## Supported Models (Production)
+
+- TinyLlama-1.1B
+- Phi-2-2.7B
+- Llama-2-7B/13B
+- CodeLlama-7B
 
 ## Notes
 
-This is a **dummy application** - the AI inference is simulated. In a production version:
-- Integrate llama.cpp or similar inference engine
-- Add actual model loading and inference
-- Implement streaming responses
+This is a **dummy application** - the inference is simulated. In a production version:
+- Integrate llama.cpp library
+- Add GGUF model loading
+- Implement token generation
 - Add model download functionality
 
 ## License

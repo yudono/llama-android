@@ -1,50 +1,97 @@
-# IronAI - Makefile for Android Build
-# Uses NativeActivity + Raylib + RayGUI
-# Requires: Android SDK, NDK, and Raylib source
+# llama.cpp - Makefile for Android Build
+# Uses NativeActivity + Dear ImGui + OpenGL ES 3
 
-RAYLIB_PATH ?= $(HOME)/raylib/src
-ANDROID_HOME ?= $(HOME)/Android/Sdk
+IMGUI_SRC ?= /tmp/imgui-android
+ANDROID_HOME ?= $(HOME)/Library/Android/sdk
 ANDROID_NDK ?= $(ANDROID_HOME)/ndk/28.2.13676358
 
-APP_NAME = IronAI
-PACKAGE_NAME = com.ironai.app
-VERSION_CODE = 1
-VERSION_NAME = 0.1.0
+APP_NAME = llamacpp
+PACKAGE_NAME = com.llamacpp.local
 
-CC = $(ANDROID_NDK)/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android33-clang++
-CXX = $(ANDROID_NDK)/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android33-clang++
+CC = $(ANDROID_NDK)/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android29-clang++
+CC_C = $(ANDROID_NDK)/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android29-clang
 
-CFLAGS = -O2 -Wall -I$(RAYLIB_PATH) -I$(RAYLIB_PATH)/external -Isrc
-CXXFLAGS = -std=c++17 $(CFLAGS)
-LDFLAGS = -lm -landroid -llog -lEGL -lGLESv2 -lOpenSLES -landroid
+CFLAGS = -O2 -std=c++17 -DANDROID -DPLATFORM_ANDROID -DIMGUI_IMPL_OPENGL_ES3 -fPIC
+CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/backends -Isrc
+CFLAGS += -I$(ANDROID_NDK)/sources/android/native_app_glue
+
+CFLAGS_C = -O2 -std=c11 -DANDROID -DPLATFORM_ANDROID -fPIC
+CFLAGS_C += -I$(ANDROID_NDK)/sources/android/native_app_glue
+
+LDFLAGS = -shared -lm -landroid -llog -lEGL -lGLESv3 -lc++_shared
 
 BUILD_DIR = build/android
-SRC = src/main.cpp
+OBJ_DIR = $(BUILD_DIR)/obj
+
+IMGUI_SRC_FILES = \
+    $(IMGUI_SRC)/imgui.cpp \
+    $(IMGUI_SRC)/imgui_demo.cpp \
+    $(IMGUI_SRC)/imgui_draw.cpp \
+    $(IMGUI_SRC)/imgui_tables.cpp \
+    $(IMGUI_SRC)/imgui_widgets.cpp \
+    $(IMGUI_SRC)/backends/imgui_impl_android.cpp \
+    $(IMGUI_SRC)/backends/imgui_impl_opengl3.cpp
+
+APP_SRC = src/main.cpp
+GLUE_SRC = $(ANDROID_NDK)/sources/android/native_app_glue/android_native_app_glue.c
+
+IMGUI_OBJS = $(OBJ_DIR)/imgui.o $(OBJ_DIR)/imgui_demo.o $(OBJ_DIR)/imgui_draw.o \
+    $(OBJ_DIR)/imgui_tables.o $(OBJ_DIR)/imgui_widgets.o \
+    $(OBJ_DIR)/imgui_impl_android.o $(OBJ_DIR)/imgui_impl_opengl3.o
+APP_OBJS = $(OBJ_DIR)/main.o $(OBJ_DIR)/android_native_app_glue.o
 
 .PHONY: all clean run install
 
-all: android
+all: $(BUILD_DIR)/libs/arm64-v8a/lib$(APP_NAME).so
+	@echo "=== Build complete ==="
 
-android: $(BUILD_DIR)/libs/arm64-v8a/lib$(APP_NAME).so
-	@echo "=== Packaging APK ==="
-	@mkdir -p android/app/src/main/java/com/ironai/app
-	@mkdir -p android/app/src/main/jniLibs/arm64-v8a
-	@cp $(BUILD_DIR)/libs/arm64-v8a/lib$(APP_NAME).so android/app/src/main/jniLibs/arm64-v8a/
-	@echo "=== APK components ready ==="
-	@echo "Use ./run.sh to build and install APK"
+$(OBJ_DIR)/imgui.o: $(IMGUI_SRC)/imgui.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< $(CFLAGS) -o $@
 
-$(BUILD_DIR)/libs/arm64-v8a/lib$(APP_NAME).so: $(SRC)
-	@echo "=== Compiling $(APP_NAME) ==="
-	@mkdir -p $(BUILD_DIR)/obj
-	$(CXX) $(CXXFLAGS) -shared -o $@ $< $(LDFLAGS)
-	@echo "=== Build complete: $@ ==="
+$(OBJ_DIR)/imgui_demo.o: $(IMGUI_SRC)/imgui_demo.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< $(CFLAGS) -o $@
+
+$(OBJ_DIR)/imgui_draw.o: $(IMGUI_SRC)/imgui_draw.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< $(CFLAGS) -o $@
+
+$(OBJ_DIR)/imgui_tables.o: $(IMGUI_SRC)/imgui_tables.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< $(CFLAGS) -o $@
+
+$(OBJ_DIR)/imgui_widgets.o: $(IMGUI_SRC)/imgui_widgets.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< $(CFLAGS) -o $@
+
+$(OBJ_DIR)/imgui_impl_android.o: $(IMGUI_SRC)/backends/imgui_impl_android.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< $(CFLAGS) -o $@
+
+$(OBJ_DIR)/imgui_impl_opengl3.o: $(IMGUI_SRC)/backends/imgui_impl_opengl3.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< $(CFLAGS) -o $@
+
+$(OBJ_DIR)/main.o: $(APP_SRC)
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< $(CFLAGS) -o $@
+
+$(OBJ_DIR)/android_native_app_glue.o: $(GLUE_SRC)
+	@mkdir -p $(OBJ_DIR)
+	$(CC_C) -c $< $(CFLAGS_C) -o $@
+
+$(BUILD_DIR)/libs/arm64-v8a/lib$(APP_NAME).so: $(IMGUI_OBJS) $(APP_OBJS)
+	@mkdir -p $(BUILD_DIR)/libs/arm64-v8a
+	$(CC) -shared -o $@ $(IMGUI_OBJS) $(APP_OBJS) $(LDFLAGS)
+	@echo "  Library: $@"
 
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -rf android/app/build
-	rm -rf android/.gradle
 
-run: android
-	@echo "=== Installing to device ==="
-	adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+run: all
+	bash run.sh
+
+install: all
+	adb install -r $(BUILD_DIR)/libs/arm64-v8a/lib$(APP_NAME).so
 	adb shell monkey -p $(PACKAGE_NAME) -c android.intent.category.LAUNCHER 1
