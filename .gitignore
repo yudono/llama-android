@@ -2,10 +2,11 @@
 build/
 
 # External dependencies
-raylib/
 tmp/
 imgui/
 imgui-android/
+*.so
+*.o
 
 # IDE
 .vscode/
