@@ -114,24 +114,38 @@ Java_com_llamacpp_local_LlamaBridge_generate(
         env->DeleteLocalRef(jr); env->DeleteLocalRef(jt);
         msgs[i] = {roleS[i].c_str(), textS[i].c_str()};
     }
-    int32_t need = llama_chat_apply_template(nullptr, msgs.data(), msgs.size(), true, nullptr, 0);
-    if (need <= 0) { LOGE("apply_template gagal"); return -1; }
-    std::string prompt((size_t) need, '\0');
-    int32_t got = llama_chat_apply_template(nullptr, msgs.data(), msgs.size(), true, prompt.data(), need);
-    if (got <= 0) { LOGE("apply_template tulis gagal"); return -1; }
-    prompt.resize((size_t) got);
+    // 1b. AUTO-SHRINK: prompt harus muat di context window (n_ctx -
+    // maxTokens). Buang exchange tertua (user+assistant) satu per satu,
+    // system prompt + pesan terbaru selalu dipertahankan.
+    int32_t room0 = nm->n_ctx - (int32_t) maxTokens - 4;
+    if (room0 < 16) room0 = 16;
+    std::string prompt;
+    std::vector<llama_token> toks;
+    for (;;) {
+        int32_t need = llama_chat_apply_template(nullptr, msgs.data(), msgs.size(), true, nullptr, 0);
+        if (need <= 0) { LOGE("apply_template gagal"); return -1; }
+        prompt.assign((size_t) need, '\0');
+        int32_t got = llama_chat_apply_template(nullptr, msgs.data(), msgs.size(), true, prompt.data(), need);
+        if (got <= 0) { LOGE("apply_template tulis gagal"); return -1; }
+        prompt.resize((size_t) got);
 
-    // 2. Tokenisasi (parse_special: token spesial template dikenali)
-    std::vector<llama_token> toks(prompt.size() + 32);
-    int32_t nTok = llama_tokenize(vocab, prompt.c_str(), (int32_t) prompt.size(),
-                                  toks.data(), (int32_t) toks.size(), false, true);
-    if (nTok < 0) { LOGE("tokenize gagal"); return -1; }
-    toks.resize((size_t) nTok);
+        // 2. Tokenisasi (parse_special: token spesial template dikenali)
+        toks.assign(prompt.size() + 32, 0);
+        int32_t nTok = llama_tokenize(vocab, prompt.c_str(), (int32_t) prompt.size(),
+                                      toks.data(), (int32_t) toks.size(), false, true);
+        if (nTok < 0) { LOGE("tokenize gagal"); return -1; }
+        toks.resize((size_t) nTok);
 
-    // 3. Muat ke context window (potong depan bila kepanjangan)
-    int32_t room = nm->n_ctx - (int32_t) maxTokens - 4;
-    if (room < 16) room = 16;
+        if ((int32_t) toks.size() <= room0 || msgs.size() <= 2) break;
+        msgs.erase(msgs.begin() + 1); // user tertua (setelah system)
+        if (msgs.size() > 1) msgs.erase(msgs.begin() + 1); // jawabannya
+        LOGI("shrink: prompt kepanjangan, buang turn tertua (%zu pesan tersisa)", msgs.size());
+    }
+
+    // 3. Pengaman terakhir: potong depan bila tetap kepanjangan.
+    int32_t room = room0;
     if ((int32_t) toks.size() > room) toks.erase(toks.begin(), toks.end() - room);
+    LOGI("prompt final: %d token dari %zu pesan (n_ctx=%d)", (int) toks.size(), msgs.size(), nm->n_ctx);
 
     const int32_t nBatch = 512;
     llama_context_params cp = llama_context_default_params();
