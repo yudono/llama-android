@@ -1,119 +1,52 @@
-# llama.cpp - Local AI Inference Engine
+# Llama.cpp — Local AI Inference (Android)
 
-A dummy UI application for local AI inference on smartphones, built with **Dear ImGui + Android NativeActivity + OpenGL ES 3**.
+Aplikasi chat AI lokal untuk Android, **100% Kotlin + XML** (standar Android),
+UI dark terinspirasi aplikasi chat modern dengan identitas sendiri
+(logo "L" + aksen teal).
 
-## Features
+## Fitur
 
-- 100% C++ native application
-- Dark theme UI with modern design
-- Mobile-first responsive layout
-- Tab-based navigation (Chat, Settings, About)
-- Simulated inference responses
-- Uses llama.cpp engine architecture
-- APK size: ~2.8 MB
+- Chat bubbles (user kanan, AI kiri + avatar logo)
+- Kartu saran saat chat kosong
+- Drawer kiri: daftar model + filter kategori + status download
+- Input bar + keyboard sistem (adjustResize)
+- Dark theme, safe area & font standar Android (tidak ada masalah skala)
+- Dummy inference (siap disambung llama.cpp via JNI)
 
-## Prerequisites
+## Prasyarat
 
-### For Android Build
-- Android SDK (API 34)
-- Android NDK (28.2.13676358 or compatible)
-- Dear ImGui source code
+- JDK 17, Android SDK (platform 34), NDK (tidak wajib untuk build debug saat ini)
+- Gradle wrapper sudah termasuk (`android/gradlew`)
 
-### For Desktop Testing
-- Raylib installed (via Homebrew on macOS or apt on Linux)
-
-## Quick Start
-
-### Test on Desktop (Recommended First)
+## Build & Install
 
 ```bash
-# Install raylib and run on desktop
-./run-desktop.sh
-```
-
-### Build for Android
-
-```bash
-# Install ImGui if you haven't
-git clone https://github.com/ocornut/imgui.git /tmp/imgui-android
-
-# Build and install to device
 ./run.sh
+# atau manual:
+./android/gradlew -p android assembleDebug
+adb install android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Manual Build
-
-```bash
-# Set environment variables
-export ANDROID_HOME=~/Library/Android/sdk
-export ANDROID_NDK=$ANDROID_HOME/ndk/28.2.13676358
-
-# Build
-./build-imgui.sh
-```
-
-## Project Structure
+## Struktur
 
 ```
-llama.cpp/
-├── src/
-│   └── main.cpp              # Main application (UI + Logic)
-├── android/
-│   ├── app/
-│   │   ├── build.gradle.kts  # Android build config
-│   │   └── proguard-rules.pro
-│   ├── build.gradle.kts      # Project-level config
-│   ├── settings.gradle.kts   # Gradle settings
-│   └── gradle.properties     # Gradle properties
-├── build-imgui.sh            # Main build script
-├── build.sh                  # Build script
-├── run.sh                    # Quick build & install
-├── run-desktop.sh            # Desktop test build
-├── Makefile                  # Make build system
-└── README.md                 # This file
+android/
+├── gradlew, gradle/            # Gradle wrapper 8.7 (AGP 8.5.2, Kotlin 1.9.24)
+├── settings.gradle.kts
+├── build.gradle.kts
+└── app/
+    ├── build.gradle.kts        # appId com.llamacpp.local
+    └── src/main/
+        ├── AndroidManifest.xml
+        ├── java/com/llamacpp/local/  # MainActivity, adapters, Data
+        └── res/                      # layout, drawable, mipmap, values
+logo.png                            # logo L (launcher + in-app)
+build.sh / run.sh                   # build & install ke device
 ```
 
-## UI Components
+## Model (dummy, siap download HF)
 
-### Chat Tab
-- Model selector dropdown (TinyLlama, Phi-2, Llama-2, CodeLlama)
-- Prompt input area
-- Generate button with loading state
-- Quick actions (Clear, Copy, Share)
-- Response output area
-
-### Settings Tab
-- Temperature slider (0.0 - 2.0)
-- Max Tokens selector (64 - 2048)
-- Device info display
-
-### About Tab
-- App logo and name
-- Version information
-- Project description
-- GitHub link
-
-## Architecture
-
-- **NativeActivity**: Android's native C++ activity (no Java/Kotlin)
-- **Dear ImGui**: Immediate mode GUI library
-- **OpenGL ES 3**: Graphics rendering
-- **llama.cpp**: Local inference engine (simulated in demo)
-
-## Supported Models (Production)
-
-- TinyLlama-1.1B
-- Phi-2-2.7B
-- Llama-2-7B/13B
-- CodeLlama-7B
-
-## Notes
-
-This is a **dummy application** - the inference is simulated. In a production version:
-- Integrate llama.cpp library
-- Add GGUF model loading
-- Implement token generation
-- Add model download functionality
+Qwen2.5-0.5B/1.5B/Coder-1.5B, Llama-3.2-1B/3B, Phi-3.5-mini.
 
 ## License
 
