@@ -38,7 +38,7 @@ class ChatAdapter(
         when (holder) {
             is UserVH -> holder.text.text = msg.text
             is AiVH -> holder.text.text = msg.text
-            is TypingVH -> holder.text.text = "Thinking…"
+            is TypingVH -> holder.text.text = msg.text.ifBlank { "..." }
         }
     }
 

@@ -105,6 +105,31 @@ class ChatDb(ctx: Context) : SQLiteOpenHelper(ctx, "llama.db", null, 2) {
         )
     }
 
+    data class Conv(
+        val id: Long, val title: String?, val model: String,
+        val quant: String, val createdAt: Long
+    )
+
+    // Daftar conversation terbaru dulu (untuk drawer).
+    fun listConversations(): List<Conv> {
+        val out = mutableListOf<Conv>()
+        readableDatabase.rawQuery(
+            "SELECT id, title, model, IFNULL(quant,''), created_at FROM conversations ORDER BY id DESC",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out += Conv(c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getLong(4))
+            }
+        }
+        return out
+    }
+
+    // Hapus permanen: pesan + conversation.
+    fun deleteConversation(convId: Long) {
+        writableDatabase.delete("messages", "conv_id=?", arrayOf("$convId"))
+        writableDatabase.delete("conversations", "id=?", arrayOf("$convId"))
+    }
+
     fun lastConversation(): Triple<Long, String, String>? {
         readableDatabase.rawQuery(
             "SELECT id, model, IFNULL(quant,'') FROM conversations ORDER BY id DESC LIMIT 1", null

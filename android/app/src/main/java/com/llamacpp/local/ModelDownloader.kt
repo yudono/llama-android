@@ -65,6 +65,18 @@ object ModelDownloader {
     fun legacyFile(ctx: Context, filename: String): File =
         File(legacyDir(ctx), filename)
 
+    // File lokal siap pakai untuk (model, quant): mapping tersimpan +
+    // file ada & lengkap. null = wajib download dulu.
+    fun readyFile(ctx: Context, modelName: String, quant: String): File? {
+        val fn = savedFilename(ctx, modelName, quant) ?: return null
+        val f = storedFile(ctx, fn) ?: return null
+        if (!fn.startsWith("/")) {
+            val expected = savedTotal(ctx, modelName, quant)
+            if (expected > 0 && f.length() < expected) return null
+        }
+        return f
+    }
+
     // File tersimpan: dukung path absolut (file manual) & nama relatif.
     fun storedFile(ctx: Context, saved: String?): File? {
         if (saved.isNullOrBlank()) return null

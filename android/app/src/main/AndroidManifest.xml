@@ -30,5 +30,11 @@
             android:exported="false"
             android:label="Settings"
             android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".ModelsActivity"
+            android:exported="false"
+            android:label="Models"
+            android:parentActivityName=".MainActivity" />
     </application>
 </manifest>

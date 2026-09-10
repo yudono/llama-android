@@ -9,6 +9,8 @@ data class AiModel(
     val ram: String,
     val repo: String,
     val mobileCtx: Int,
+    // Link info resmi model; bila diisi, tombol Get membuka link ini.
+    val infoUrl: String? = null,
     // Quant pilihan user (ala `llama serve -hf repo:QUANT`); default = terbaik.
     var quant: String = DEFAULT_QUANT,
     var downloaded: Boolean = false,
@@ -30,7 +32,6 @@ data class ChatMessage(
 
 object AppData {
     val models = mutableListOf(
-        AiModel("SmolLM2-135M-Instruct", "SmolLM2-135M", "Micro Size", "0.13B", "140-200MB", "~400MB", "HuggingFaceTB/SmolLM2-135M-Instruct-GGUF", 512),
         AiModel("SmolLM2-360M-Instruct", "SmolLM2-360M", "Micro Size", "0.36B", "250-350MB", "~700MB", "HuggingFaceTB/SmolLM2-360M-Instruct-GGUF", 512),
         AiModel("Qwen2.5-0.5B-Instruct", "Qwen2.5-0.5B", "Ultra Ringan", "0.5B", "350-600MB", "~1GB", "Qwen/Qwen2.5-0.5B-Instruct-GGUF", 512),
         AiModel("Apple-OpenELM-450M-Instruct", "OpenELM-450M", "Ultra Ringan", "0.45B", "300-450MB", "~800MB", "lmstudio-community/OpenELM-450M-Instruct-GGUF", 512),
@@ -44,7 +45,9 @@ object AppData {
         AiModel("Ministral-3B-Instruct", "Ministral-3B", "Performa Tinggi", "3B", "1.9-2.2GB", "~3GB", "bartowski/Ministral-3B-Instruct-2410-GGUF", 1024),
         AiModel("Llama-3.2-3B-Instruct", "Llama-3.2-3B", "Keseimbangan Terbaik", "3B", "1.8-2.2GB", "~3GB", "unsloth/Llama-3.2-3B-Instruct-GGUF", 1024),
         AiModel("DeepSeek-R1-Distill-Qwen-3B", "R1-Distill-3B", "Spesialis Penalaran", "3B", "2.0-2.4GB", "~3.5GB", "unsloth/DeepSeek-R1-Distill-Qwen-3B-GGUF", 1024),
-        AiModel("Phi-3.5-mini-instruct", "Phi-3.5-mini", "Ringan & Cepat", "3.8B", "~2.2GB", "~3.5GB", "bartowski/Phi-3.5-mini-instruct-GGUF", 1024)
+        AiModel("Phi-3.5-mini-instruct", "Phi-3.5-mini", "Ringan & Cepat", "3.8B", "~2.2GB", "~3.5GB", "bartowski/Phi-3.5-mini-instruct-GGUF", 1024),
+        AiModel("Kimi-K3", "Kimi-K3", "High-End / Enterprise", "2.8T (MoE 104B aktif)", "594 GB", "~610 GB+", "unsloth/Kimi-K3-GGUF", 512,
+            "https://www.youtube.com/watch?v=t1udwdcRT0A")
     )
 
     // Kategori dinamis sesuai urutan kemunculan (tambah "Semua" di depan).
