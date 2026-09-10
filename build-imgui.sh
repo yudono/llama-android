@@ -106,6 +106,18 @@ mkdir -p "$APP_BUILD/apk"
 
 cp "$BUILD_DIR/arm64-v8a/lib${APP_NAME}.so" "$APP_BUILD/"
 
+# Generate launcher icons from logo.png (mipmap densities)
+if [ -f "$PROJECT_DIR/logo.png" ]; then
+    echo "  Generating launcher icons from logo.png..."
+    for spec in "mipmap-mdpi:48" "mipmap-hdpi:72" "mipmap-xhdpi:96" "mipmap-xxhdpi:144" "mipmap-xxxhdpi:192"; do
+        d="${spec%%:*}"; px="${spec##*:}"
+        mkdir -p "$APP_BUILD/src/main/res/$d"
+        sips -z "$px" "$px" "$PROJECT_DIR/logo.png" --out "$APP_BUILD/src/main/res/$d/ic_launcher.png" > /dev/null
+    done
+else
+    echo "  WARNING: logo.png not found, skipping launcher icon"
+fi
+
 # Create AndroidManifest.xml
 cat > "$APP_BUILD/src/main/AndroidManifest.xml" << EOF
 <?xml version="1.0" encoding="utf-8"?>
@@ -119,6 +131,7 @@ cat > "$APP_BUILD/src/main/AndroidManifest.xml" << EOF
     <application
         android:allowBackup="true"
         android:hasCode="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 
@@ -146,7 +159,7 @@ EOF
 cat > "$APP_BUILD/src/main/res/values/strings.xml" << EOF
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">llama.cpp</string>
+    <string name="app_name">Llama.cpp</string>
 </resources>
 EOF
 
@@ -226,5 +239,5 @@ adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 
 echo ""
 echo "============================================"
-echo "  llama.cpp installed and running!"
+echo "  Llama.cpp installed and running!"
 echo "============================================"
