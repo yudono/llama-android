@@ -5,6 +5,7 @@ build/
 tmp/
 imgui/
 imgui-android/
+third_party/
 *.so
 *.o
 
@@ -33,3 +34,4 @@ android/build/
 # Temp
 *.tmp
 *.log
+.cxx/
