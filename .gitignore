@@ -27,6 +27,7 @@ android/build/
 *.dex
 *.class
 *.jar
+!gradle-wrapper.jar
 *.keystore
 
 # Temp

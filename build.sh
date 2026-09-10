@@ -1,13 +1,18 @@
 #!/bin/bash
 set -e
+cd "$(dirname "$0")/android"
+
+export JAVA_HOME=/Users/yudonoputro/Library/Java/JavaVirtualMachines/corretto-17.0.16/Contents/Home
+export ANDROID_HOME=/Users/yudonoputro/Library/Android/sdk
+export ANDROID_SDK_ROOT=$ANDROID_HOME
 
 echo "============================================"
-echo "  llama.cpp - Full Build Script"
+echo "  Llama.cpp - Build Debug APK (Kotlin+XML)"
 echo "============================================"
 
-# Uninstall old version
-adb uninstall com.ironai.app 2>/dev/null || true
-adb uninstall com.llamacpp.local 2>/dev/null || true
+./gradlew assembleDebug --no-daemon
 
-# Run the ImGui build
-bash "$(dirname "$0")/build-imgui.sh"
+APK="app/build/outputs/apk/debug/app-debug.apk"
+echo ""
+echo "APK: $APK"
+ls -lh "$APK"

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background -->
+    <color name="bg">#0E0E11</color>
+    <color name="bg_elevated">#17171C</color>
+    <color name="card">#1E1E24</color>
+    <color name="card_selected">#26262E</color>
+    <color name="input_bg">#1E1E24</color>
+    <!-- Bubbles -->
+    <color name="bubble_user">#2E2E38</color>
+    <color name="bubble_ai">#17171C</color>
+    <!-- Text -->
+    <color name="text">#EBEBF0</color>
+    <color name="text_dim">#8A8A96</color>
+    <color name="text_faint">#5A5A66</color>
+    <!-- Accent (identitas llama.cpp, pembeda dari referensi) -->
+    <color name="accent">#00B5A0</color>
+    <color name="accent_dark">#009688</color>
+    <color name="on_accent">#06251F</color>
+    <!-- Status -->
+    <color name="green">#4CC864</color>
+    <color name="yellow">#E6C832</color>
+    <!-- Lines -->
+    <color name="divider">#2A2A32</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

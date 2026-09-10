@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Llama.cpp</string>
+    <string name="ask_anything">Ask anything…</string>
+    <string name="new_chat">New chat</string>
+    <string name="models">Models</string>
+    <string name="try_asking">Try asking</string>
+    <string name="version">Llama.cpp v0.1.0</string>
+</resources>

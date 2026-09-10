@@ -6,12 +6,12 @@ pluginManagement {
     }
 }
 
-dependencyResolution {
+dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
     }
 }
 
-rootProject.name = "IronAI"
+rootProject.name = "LlamaCpp"
 include(":app")
