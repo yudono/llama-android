@@ -32,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     private var generating = false
     private var streamPos = -1
     private var lastSendMs = 0L
+    // Conversation pemilik generate yang sedang jalan (anti-bocor antar chat).
+    private var genConvId: Long = -1
 
     // Cache model native yang sedang aktif (load sekali, pakai berkali-kali).
     private var modelHandle = 0L
@@ -175,7 +177,7 @@ class MainActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) {}
         })
         b.btnSend.setOnClickListener {
-            if (generating) {
+            if (generating && genConvId == convId) {
                 cancelGenerate()
                 return@setOnClickListener
             }
@@ -193,7 +195,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshSend() {
-        if (generating) {
+        // Stop hanya relevan di conversation pemilik generate.
+        if (generating && genConvId == convId) {
             // Mode stop: tombol kirim jadi pembatal.
             b.btnSend.setBackgroundResource(R.drawable.btn_circle_white)
             b.btnSend.setImageResource(R.drawable.ic_stop)
@@ -208,6 +211,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun send(text: String) {
+        // Satu generate aktif dalam satu waktu (CPU HP tak kuat paralel).
+        // Pesan tak disimpan dulu agar urutan user->AI tak pernah rusak.
+        if (generating) {
+            toast("Tunggu respons selesai dulu")
+            return
+        }
         ensureConversation()
         chatAdapter.add(ChatMessage(text, true), b.rvChat)
         db.addMessage(convId, "user", text)
@@ -253,31 +262,44 @@ class MainActivity : AppCompatActivity() {
             return
         }
         generating = true
+        genConvId = convId // ikat ke conversation ini; pindah chat tak akan bocor
         streamPos = -1
         refreshSend()
         showTyping()
         scope.launch {
             val sb = StringBuilder()
             var aiPos = -1
+            val mine = genConvId // conversation pemilik generate ini
             try {
                 val history = promptHistory()
                 val h = ensureHandle(m, file)
                 if (h == 0L) throw IllegalStateException("loadModel gagal")
-                hideTyping()
-                chatAdapter.add(ChatMessage("", false), b.rvChat)
-                aiPos = chatAdapter.items.size - 1
-                streamPos = aiPos
+                if (mine != convId) {
+                    // User sudah pindah chat: generate tetap jalan senyap,
+                    // hasilnya disimpan ke conversation asal, UI tak disentuh.
+                    hideTypingSilent()
+                } else {
+                    hideTyping()
+                }
+                if (mine == convId) {
+                    chatAdapter.add(ChatMessage("", false), b.rvChat)
+                    aiPos = chatAdapter.items.size - 1
+                    streamPos = aiPos
+                }
                 LlamaBridge.generateFlow(
                     h, history, pMaxTokens(), pTemperature(), pTopK(), pTopP()
                 ).collect { tok ->
-                    if (aiPos < 0 || aiPos >= chatAdapter.items.size) return@collect
                     sb.append(tok)
+                    if (mine != convId) return@collect // kumpulkan saja
+                    if (aiPos < 0 || aiPos >= chatAdapter.items.size) return@collect
                     chatAdapter.items[aiPos] = ChatMessage(sb.toString(), false)
                     chatAdapter.notifyItemChanged(aiPos)
                     b.rvChat.scrollToPosition(aiPos)
                 }
             } catch (e: Exception) {
-                if (aiPos < 0) {
+                if (mine != convId) {
+                    db.addMessage(mine, "assistant", "[error: ${e.message}]")
+                } else if (aiPos < 0) {
                     hideTyping()
                     chatAdapter.add(ChatMessage("Error: ${e.message}", false), b.rvChat)
                     aiPos = chatAdapter.items.size - 1
@@ -288,11 +310,26 @@ class MainActivity : AppCompatActivity() {
                     chatAdapter.notifyItemChanged(aiPos)
                 }
             }
-            val final = if (aiPos >= 0) chatAdapter.items[aiPos].text else ""
-            if (final.isNotBlank()) db.addMessage(convId, "assistant", final)
-            generating = false
-            streamPos = -1
-            refreshSend()
+            var final = sb.toString()
+            if (final.isBlank()) final = "(empty response — tap Retry)"
+            if (mine == convId && aiPos >= 0 && aiPos < chatAdapter.items.size &&
+                chatAdapter.items[aiPos].text.isBlank()
+            ) {
+                // Jangan tampilkan bubble kosong.
+                chatAdapter.items[aiPos] = ChatMessage(final, false)
+                chatAdapter.notifyItemChanged(aiPos)
+            }
+            db.addMessage(mine, "assistant", final)
+            if (mine == convId) {
+                generating = false
+                streamPos = -1
+                refreshSend()
+            } else if (genConvId == mine) {
+                // Pemilik sudah pindah; hanya bereskan flag bila masih milik kita.
+                generating = false
+                streamPos = -1
+            }
+            genConvId = -1
         }
     }
 
@@ -311,8 +348,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showTyping() {
-        chatAdapter.add(ChatMessage("Thinking", false, isTyping = true), b.rvChat)
-        typingAnim.dots = 0
+        chatAdapter.add(ChatMessage("Thinking.", false, isTyping = true), b.rvChat)
+        typingAnim.dots = 1
         handler.post(typingAnim)
     }
 
@@ -321,12 +358,24 @@ class MainActivity : AppCompatActivity() {
         chatAdapter.removeLastTyping()
     }
 
+    // Hentikan animasi saja (item typing sudah hilang karena ganti chat).
+    private fun hideTypingSilent() {
+        handler.removeCallbacks(typingAnim)
+    }
+
     // Batalkan generate yang sedang jalan (tombol Stop).
     private fun cancelGenerate() {
         if (!generating) return
         runCatching { LlamaBridge.cancel() }
         handler.postDelayed({
             if (!generating) return@postDelayed // sudah selesai sendiri
+            // Bersihkan sisa typing bila masih ada (cancel saat loading).
+            val ti = chatAdapter.items.indexOfFirst { it.isTyping }
+            if (ti >= 0 && (streamPos < 0 || ti != streamPos)) {
+                chatAdapter.items.removeAt(ti)
+                chatAdapter.notifyItemRemoved(ti)
+                if (streamPos > ti) streamPos--
+            }
             if (streamPos >= 0 && streamPos < chatAdapter.items.size) {
                 val partial = chatAdapter.items[streamPos].text
                 if (partial.isNotBlank()) db.addMessage(convId, "assistant", "$partial\n[dibatalkan]")
