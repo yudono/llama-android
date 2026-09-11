@@ -12,15 +12,30 @@ android {
         applicationId = "com.llamacpp.local"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
-        ndk { abiFilters += "arm64-v8a" }
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+    }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            // NOTE: armeabi-v7a disengaja TIDAK diikutkan — llama.cpp b10893
+            // gagal kompilasi di ARM 32-bit (vld1q_f16 tak tersedia di armv7).
+            // HP 32-bit juga tak realistis untuk model GGUF ratusan MB.
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = true
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Pakai debug key agar APK/AAB rilis GitHub bisa langsung diinstal
+            // (sideload). Untuk Play Store, ganti dengan upload key sendiri.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
