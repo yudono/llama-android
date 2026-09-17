@@ -424,7 +424,9 @@ class ImageGenActivity : AppCompatActivity() {
             runCatching { StableDiffusionBridge.freeContext(sdHandle) }
             sdHandle = 0L
         }
-        val threads = Runtime.getRuntime().availableProcessors().coerceAtLeast(2)
+        // Maks 4 thread: sampling full-CPU memicu watchdog CPU_HUNG +
+        // thermal-throttle di HP; 4 thread titik manis performa vs panas.
+        val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
         sdHandle = StableDiffusionBridge.loadContext(file.absolutePath, threads)
         handleFor = if (sdHandle != 0L) file.absolutePath else ""
         return sdHandle

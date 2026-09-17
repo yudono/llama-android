@@ -54,6 +54,7 @@ JNIEXPORT jlong JNICALL
 Java_com_llamacpp_local_LlamaBridge_loadModel(JNIEnv* env, jobject, jstring jpath, jint nCtx) {
     const char* path = env->GetStringUTFChars(jpath, nullptr);
     llama_model_params mp = llama_model_default_params();
+    mp.load_mode = LLAMA_LOAD_MODE_MMAP; // eksplisit: map file GGUF, bukan baca penuh (hemat RAM)
     llama_model* m = llama_model_load_from_file(path, mp);
     env->ReleaseStringUTFChars(jpath, path);
     if (!m) { LOGE("loadModel gagal"); return 0; }
