@@ -2,13 +2,16 @@ package com.llamacpp.local
 
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.OpenableColumns
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
@@ -21,6 +24,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 // Text-to-image on-device (stable-diffusion.cpp, model SDXL-Turbo GGUF).
 // Alur: pilih model -> Get (download HF, bisa Cancel) -> isi prompt ->
@@ -39,6 +43,14 @@ class ImageGenActivity : AppCompatActivity() {
     private var handleFor = ""
 
     private var lastOut: File? = null
+    // Pembatalan salinan file lokal per model (pick).
+    private val copyCancels = mutableMapOf<Int, AtomicBoolean>()
+    private var pickFor = -1
+
+    private val pickFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null && pickFor >= 0) startCopy(pickFor, uri)
+        pickFor = -1
+    }
 
     companion object {
         // Kunci mapping file di SQLite kv (model image tanpa varian quant).
@@ -80,8 +92,9 @@ class ImageGenActivity : AppCompatActivity() {
 
         b.btnDl.setOnClickListener {
             val m = models[sel]
-            if (m.downloading) cancelDownload() else startDownload()
+            if (m.downloading) cancelTransfer() else startDownload()
         }
+        b.btnPickFile.setOnClickListener { launchPicker() }
         b.btnDelModel.setOnClickListener { confirmDelete() }
         b.btnGenerate.setOnClickListener { startGenerate() }
         b.btnCancelGen.setOnClickListener { cancelGenerate() }
@@ -120,10 +133,12 @@ class ImageGenActivity : AppCompatActivity() {
         val m = model()
         when {
             m.downloading -> {
-                b.tvDlStatus.text = "Downloading ${m.progressLabel()}"
+                b.tvDlStatus.text = if (m.downloadId > 0) "Downloading ${m.progressLabel()}"
+                                    else "Copying ${m.progressLabel()}"
                 b.tvDlStatus.setTextColor(ContextCompat.getColor(this, R.color.yellow))
                 b.btnDl.text = "Cancel"
                 b.btnDl.setTextColor(ContextCompat.getColor(this, R.color.red))
+                b.btnPickFile.visibility = View.GONE
                 b.btnDelModel.visibility = View.GONE
                 b.dlProgress.visibility = View.VISIBLE
                 b.dlProgress.progress = m.progress.toInt()
@@ -132,6 +147,7 @@ class ImageGenActivity : AppCompatActivity() {
                 b.tvDlStatus.text = "Ready to use · ${m.fileSize}"
                 b.tvDlStatus.setTextColor(ContextCompat.getColor(this, R.color.green))
                 b.btnDl.visibility = View.GONE
+                b.btnPickFile.visibility = View.GONE
                 b.btnDelModel.visibility = View.VISIBLE
                 b.dlProgress.visibility = View.GONE
             }
@@ -141,6 +157,7 @@ class ImageGenActivity : AppCompatActivity() {
                 b.btnDl.visibility = View.VISIBLE
                 b.btnDl.text = "Get"
                 b.btnDl.setTextColor(ContextCompat.getColor(this, R.color.accent))
+                b.btnPickFile.visibility = View.VISIBLE
                 b.btnDelModel.visibility = View.GONE
                 b.dlProgress.visibility = View.GONE
             }
@@ -244,6 +261,10 @@ class ImageGenActivity : AppCompatActivity() {
         handler.post(tick)
     }
 
+    private fun cancelTransfer() {
+        if (model().downloadId > 0) cancelDownload() else copyCancels[sel]?.set(true)
+    }
+
     private fun cancelDownload() {
         val m = model()
         if (m.downloadId > 0) {
@@ -254,6 +275,100 @@ class ImageGenActivity : AppCompatActivity() {
         m.downloadId = -1L
         refreshDl()
         Toast.makeText(this, "Download dibatalkan", Toast.LENGTH_SHORT).show()
+    }
+
+    // Pilih file .gguf sendiri (mis. hasil adb push ke Download) sbg alternatif Get.
+    private fun launchPicker() {
+        val m = model()
+        if (m.downloading || m.downloaded) return
+        pickFor = sel
+        try {
+            pickFile.launch(arrayOf("*/*"))
+        } catch (_: Exception) {
+            pickFor = -1
+            Toast.makeText(this, "Tak ada file picker", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun startCopy(real: Int, uri: Uri) {
+        val m = AppData.imageModels[real]
+        val cr = contentResolver
+        val rawName: String
+        val size: Long
+        try {
+            cr.query(uri, null, null, null, null)?.use { c ->
+                if (!c.moveToFirst()) return
+                rawName = c.getString(c.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)) ?: return
+                val si = c.getColumnIndex(OpenableColumns.SIZE)
+                size = if (si >= 0) c.getLong(si) else -1L
+            } ?: return
+        } catch (_: Exception) {
+            Toast.makeText(this, "Tak bisa membaca file", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!rawName.endsWith(".gguf", true)) {
+            Toast.makeText(this, "Pilih file .gguf", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val safe = rawName.substringAfterLast('/').substringAfterLast('\\')
+        val dest = File(ModelDownloader.modelsDir(this), safe)
+        if (dest.exists()) dest.delete()
+        m.downloading = true
+        m.downloadId = -1L
+        m.progress = 0f
+        val cancel = AtomicBoolean(false)
+        copyCancels[real] = cancel
+        refreshDl()
+        Thread {
+            var done = 0L
+            try {
+                cr.openInputStream(uri)?.use { inp ->
+                    dest.outputStream().use { out ->
+                        val buf = ByteArray(256 * 1024)
+                        while (true) {
+                            if (cancel.get()) throw java.util.concurrent.CancellationException()
+                            val n = inp.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                            done += n
+                            if (size > 0) {
+                                m.progress = (100f * done / size).coerceIn(0f, 100f)
+                                handler.post { refreshDl() }
+                            }
+                        }
+                    }
+                } ?: throw IllegalStateException("tak bisa buka file")
+                if (done <= 0) throw IllegalStateException("file kosong")
+                ModelDownloader.saveFilename(this, m.name, IMG_Q, safe)
+                ModelDownloader.saveTotal(this, m.name, IMG_Q, done)
+                handler.post {
+                    m.downloading = false
+                    m.downloaded = true
+                    m.progress = 100f
+                    refreshDl()
+                    refreshGen()
+                    Toast.makeText(this, "${m.shortName} terpasang", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: java.util.concurrent.CancellationException) {
+                dest.delete()
+                handler.post {
+                    m.downloading = false
+                    m.progress = 0f
+                    refreshDl()
+                    Toast.makeText(this, "Penyalinan dibatalkan", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                dest.delete()
+                handler.post {
+                    m.downloading = false
+                    m.progress = 0f
+                    refreshDl()
+                    Toast.makeText(this, "Gagal menyalin: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                copyCancels.remove(real)
+            }
+        }.start()
     }
 
     private fun confirmDelete() {
