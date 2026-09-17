@@ -16,6 +16,27 @@ android {
         versionName = "1.0.2"
 
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+
+        // Flag CMake utk backend GPU Vulkan (glslc + SPIRV-Headers di mesin
+        // build, bukan di HP). Bisa dioverride via env VULKAN_GLSLC.
+        externalNativeBuild {
+            cmake {
+                val home = System.getProperty("user.home")
+                val glslc = System.getenv("VULKAN_GLSLC") ?: "/opt/homebrew/bin/glslc"
+                arguments(
+                    "-DVulkan_GLSLC_EXECUTABLE=$glslc",
+                    "-DSPIRV-Headers_DIR=$home/.vulkan-deps/install/share/cmake/SPIRV-Headers",
+                    // NDK tak menyertakan vulkan.hpp (C++ binding); pakai Khronos.
+                    "-DVulkan_INCLUDE_DIR=$home/.vulkan-deps/Vulkan-Headers/include",
+                    // Stub libvulkan API-24 tak punya simbol Vulkan 1.1+
+                    // (mis. vkGetPhysicalDeviceFeatures2). Link lawan stub
+                    // API-34; aman: libggml-vulkan.so hanya di-dlopen bila
+                    // backend Vulkan dipakai, dan ggml mengecek dukungan
+                    // device sblm menggunakannya. minSdk Java tetap 24.
+                    "-DANDROID_PLATFORM=android-34"
+                )
+            }
+        }
     }
 
     splits {

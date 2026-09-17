@@ -69,7 +69,16 @@ class ImageGenActivity : AppCompatActivity() {
         setContentView(b.root)
 
         b.btnBack.setOnClickListener { finish() }
-        b.tvSdVer.text = runCatching { "sd.cpp ${StableDiffusionBridge.version()}" }.getOrDefault("")
+        b.tvSdVer.text = runCatching {
+            val devs = StableDiffusionBridge.listDevices()
+            "sd.cpp ${StableDiffusionBridge.version()}" +
+                if ("vulkan" in devs.lowercase()) " · GPU" else " · CPU"
+        }.getOrDefault("")
+        // Diagnostik backend (CPU/Vulkan) sekali saat buka layar.
+        android.util.Log.d("gpu-check", runCatching {
+            "llama=[" + LlamaBridge.systemInfo().take(600) + "]\nsd-devices:\n" +
+            StableDiffusionBridge.listDevices()
+        }.getOrDefault("gpu-check gagal"))
 
         val models = AppData.imageModels
         b.spImageModel.adapter = ArrayAdapter(

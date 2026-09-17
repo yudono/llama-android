@@ -16,6 +16,7 @@ object StableDiffusionBridge {
     @JvmStatic external fun freeContext(handle: Long)
     @JvmStatic external fun cancel(handle: Long)
     @JvmStatic external fun version(): String
+    @JvmStatic external fun listDevices(): String
     @JvmStatic external fun modelVersion(handle: Long): String
 
     @JvmStatic external fun generate(

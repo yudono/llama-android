@@ -204,6 +204,18 @@ Java_com_llamacpp_local_StableDiffusionBridge_version(JNIEnv* env, jobject) {
 }
 
 JNIEXPORT jstring JNICALL
+Java_com_llamacpp_local_StableDiffusionBridge_listDevices(JNIEnv* env, jobject) {
+    char buf[8192];
+    size_t need = sd_list_devices(buf, sizeof(buf));
+    if (need >= sizeof(buf)) {
+        std::string s(buf, sizeof(buf) - 1);
+        s += "\n...(terpotong)";
+        return env->NewStringUTF(s.c_str());
+    }
+    return env->NewStringUTF(buf);
+}
+
+JNIEXPORT jstring JNICALL
 Java_com_llamacpp_local_StableDiffusionBridge_modelVersion(JNIEnv* env, jobject, jlong h) {
     auto* nh = reinterpret_cast<NativeSd*>(h);
     if (!nh || !nh->ctx) return env->NewStringUTF("Unknown");

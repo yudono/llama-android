@@ -66,6 +66,32 @@ dieksekusi model ber-weight I8/FP8 (tak ada di katalog). `GGML_MAX_NAME=160`
 di-define global agar layout `struct ggml_tensor` konsisten di semua lib.
 Build berikutnya inkremental.
 
+## GPU (Vulkan, hybrid CPU+GPU)
+
+Build menyertakan backend Vulkan (`GGML_VULKAN=ON`, `libggml-vulkan.so`).
+Runtime otomatis hybrid: llama offload layer ke GPU,
+SD menaruh difusi di GPU + text-encoder/VAE di CPU. Tanpa GPU yang cocok,
+otomatis jatuh kembali ke CPU. Indikator di layar Image Gen kanan atas:
+`· GPU` / `· CPU`.
+
+Syarat di mesin build (macOS): `glslc` + header Vulkan C++ + SPIRV-Headers:
+
+```bash
+brew install glslang shaderc
+mkdir -p ~/.vulkan-deps
+git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Headers ~/.vulkan-deps/SPIRV-Headers
+git clone --depth 1 https://github.com/KhronosGroup/Vulkan-Headers ~/.vulkan-deps/Vulkan-Headers
+cmake -S ~/.vulkan-deps/SPIRV-Headers -B ~/.vulkan-deps/SPIRV-Headers/build \
+  -DCMAKE_INSTALL_PREFIX=~/.vulkan-deps/install
+cmake --build ~/.vulkan-deps/SPIRV-Headers/build
+cmake --install ~/.vulkan-deps/SPIRV-Headers/build
+```
+
+Path di atas sudah terhubung via `arguments` cmake di
+`android/app/build.gradle.kts` (bisa dioverride env `VULKAN_GLSLC`).
+HP perlu driver Vulkan (mis. Mali `vulkan.mali.so`, diverifikasi di
+TECNO Helio G99 / Mali-G57).
+
 ## Pemakaian pertama kali
 
 1. Buka aplikasi → tap **☰** → **Models** (atau tap banner).

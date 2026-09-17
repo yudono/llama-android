@@ -11,6 +11,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # llama, dan SD semuanya pakai nilai sama.
 add_definitions(-DGGML_MAX_NAME=160)
 
+# Backend GPU (Vulkan) utk llama.cpp + stable-diffusion.cpp (satu ggml).
+# Butuh Vulkan SDK (glslc + SPIRV-Headers) di mesin build.
+# Runtime otomatis hybrid CPU+GPU: llama offload layer ke GPU
+# (default n_gpu_layers=-1), SD menaruh difusi di GPU + text-encoder/
+# VAE di CPU. Tanpa GPU yg cocok, otomatis jatuh kembali ke CPU.
+set(GGML_VULKAN ON CACHE BOOL "" FORCE)
+
 # Urutan add_subdirectory: llama.cpp DULUAN agar target `ggml` adalah ggml
 # upstream (llama b10893 butuh API ggml baru yg tak ada di fork leejet).
 # 2 op INT8 eksklusif fork leejet yg dipakai SD (ggml_mul_mat_i8_tensorwise,
@@ -42,6 +49,14 @@ else()
         GIT_PROGRESS TRUE
     )
     FetchContent_MakeAvailable(llama)
+endif()
+
+# SPIRV-Headers diinstal di prefix non-standar (~/.vulkan-deps) sehingga
+# ggml-vulkan tak menemukannya (hulu mengasumsikan prefix standar spt
+# /usr/local); tambahkan eksplisit ke target backend Vulkan.
+if (TARGET ggml-vulkan)
+    target_include_directories(ggml-vulkan PRIVATE
+        "$ENV{HOME}/.vulkan-deps/install/include")
 endif()
 
 # --- stable-diffusion.cpp (image generation, pin commit stabil) ---
