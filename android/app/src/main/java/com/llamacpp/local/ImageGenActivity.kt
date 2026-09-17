@@ -55,7 +55,8 @@ class ImageGenActivity : AppCompatActivity() {
     companion object {
         // Kunci mapping file di SQLite kv (model image tanpa varian quant).
         const val IMG_Q = "IMG"
-        val SIZES = listOf(512 to 512, 768 to 512, 512 to 768, 768 to 768, 1024 to 1024)
+        // 256 utk draft super-cepat/hemat RAM; native clamp min 256.
+        val SIZES = listOf(256 to 256, 512 to 512, 768 to 512, 512 to 768, 768 to 768, 1024 to 1024)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
