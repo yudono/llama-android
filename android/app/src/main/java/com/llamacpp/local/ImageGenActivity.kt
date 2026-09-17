@@ -293,12 +293,12 @@ class ImageGenActivity : AppCompatActivity() {
     private fun startCopy(real: Int, uri: Uri) {
         val m = AppData.imageModels[real]
         val cr = contentResolver
-        val rawName: String
-        val size: Long
+        var rawName: String? = null
+        var size = -1L
         try {
             cr.query(uri, null, null, null, null)?.use { c ->
                 if (!c.moveToFirst()) return
-                rawName = c.getString(c.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)) ?: return
+                rawName = c.getString(c.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
                 val si = c.getColumnIndex(OpenableColumns.SIZE)
                 size = if (si >= 0) c.getLong(si) else -1L
             } ?: return
@@ -306,11 +306,12 @@ class ImageGenActivity : AppCompatActivity() {
             Toast.makeText(this, "Tak bisa membaca file", Toast.LENGTH_SHORT).show()
             return
         }
-        if (!rawName.endsWith(".gguf", true)) {
+        val picked = rawName ?: return
+        if (!picked.endsWith(".gguf", true)) {
             Toast.makeText(this, "Pilih file .gguf", Toast.LENGTH_SHORT).show()
             return
         }
-        val safe = rawName.substringAfterLast('/').substringAfterLast('\\')
+        val safe = picked.substringAfterLast('/').substringAfterLast('\\')
         val dest = File(ModelDownloader.modelsDir(this), safe)
         if (dest.exists()) dest.delete()
         m.downloading = true
