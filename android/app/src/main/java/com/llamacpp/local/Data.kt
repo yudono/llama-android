@@ -15,9 +15,11 @@ data class AiModel(
     var quant: String = DEFAULT_QUANT,
     var downloaded: Boolean = false,
     var downloading: Boolean = false,
-    var progress: Int = 0,
+    // Persen 0-100 dgn 2 desimal (tampil "2.99%").
+    var progress: Float = 0f,
     var downloadId: Long = -1L
 ) {
+    fun progressLabel(): String = "%.2f%%".format(java.util.Locale.US, progress)
     companion object {
         const val DEFAULT_QUANT = "Q8_0"
         val QUANTS = listOf("Q8_0", "Q6_K", "Q5_K_M", "Q5_0", "Q4_K_M", "Q4_0")
@@ -30,13 +32,30 @@ data class ChatMessage(
     val isTyping: Boolean = false
 )
 
+// Model image generation (stable-diffusion.cpp, file GGUF utuh — tanpa quant).
+data class ImageModel(
+    val name: String,
+    val shortName: String,
+    val category: String,
+    val paramSize: String,
+    val fileSize: String,
+    val ram: String,
+    val repo: String,
+    val filename: String,
+    var downloaded: Boolean = false,
+    var downloading: Boolean = false,
+    // Persen 0-100 dgn 2 desimal (tampil "2.99%").
+    var progress: Float = 0f,
+    var downloadId: Long = -1L
+) {
+    fun progressLabel(): String = "%.2f%%".format(java.util.Locale.US, progress)
+}
+
 object AppData {
     val models = mutableListOf(
         AiModel("SmolLM2-360M-Instruct", "SmolLM2-360M", "Micro Size", "0.36B", "250-350MB", "~700MB", "HuggingFaceTB/SmolLM2-360M-Instruct-GGUF", 512),
         AiModel("Qwen2.5-0.5B-Instruct", "Qwen2.5-0.5B", "Ultra Ringan", "0.5B", "350-600MB", "~1GB", "Qwen/Qwen2.5-0.5B-Instruct-GGUF", 512),
-        AiModel("Apple-OpenELM-450M-Instruct", "OpenELM-450M", "Ultra Ringan", "0.45B", "300-450MB", "~800MB", "lmstudio-community/OpenELM-450M-Instruct-GGUF", 512),
         AiModel("Llama-3.2-1B-Instruct", "Llama-3.2-1B", "Ultra Ringan", "1B", "600-900MB", "~1.5GB", "unsloth/Llama-3.2-1B-Instruct-GGUF", 512),
-        AiModel("Apple-OpenELM-1.1B-Instruct", "OpenELM-1.1B", "Ultra Ringan", "1.1B", "700MB-1.0GB", "~1.5GB", "lmstudio-community/OpenELM-1_1B-Instruct-GGUF", 512),
         AiModel("SmolLM2-1.7B-Instruct", "SmolLM2-1.7B", "Keseimbangan Terbaik", "1.7B", "1.0-1.3GB", "~2GB", "HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF", 1024),
         AiModel("Qwen2.5-1.5B-Instruct", "Qwen2.5-1.5B", "Keseimbangan Terbaik", "1.5B", "900MB-1.2GB", "~2GB", "Qwen/Qwen2.5-1.5B-Instruct-GGUF", 1024),
         AiModel("Qwen2.5-Coder-1.5B-Instruct", "Qwen-Coder-1.5B", "Spesialis Coding", "1.5B", "~1.1GB", "~2GB", "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF", 1024),
@@ -53,6 +72,12 @@ object AppData {
     // Kategori dinamis sesuai urutan kemunculan (tambah "Semua" di depan).
     val categories: List<String> =
         listOf("Semua") + models.map { it.category }.distinct()
+
+    // Model text-to-image (SDXL-Turbo, cocok HP: steps kecil + cfg rendah).
+    val imageModels = mutableListOf(
+        ImageModel("DreamShaper-XL-v2-Turbo-Q4_K", "DreamShaper-XL", "Image Generation", "3.5B", "~2.6GB", "~4GB", "offgrid-ai/dreamshaper-xl-v2-turbo-GGUF", "dreamshaper-xl-v2-turbo-Q4_K.gguf"),
+        ImageModel("DreamShaper-XL-v2-Turbo-Q8_0", "DreamShaper-XL-Q8", "Image Generation", "3.5B", "~3.9GB", "~6GB", "offgrid-ai/dreamshaper-xl-v2-turbo-GGUF", "dreamshaper-xl-v2-turbo-Q8_0.gguf")
+    )
 
     val suggestions = listOf(
         "What can you do?" to "See what I can help with",

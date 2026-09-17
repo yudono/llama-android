@@ -50,6 +50,7 @@ class ModelsActivity : AppCompatActivity() {
             selectedPos = selectedModel,
             onSelect = { real -> switchModel(real); finish() },
             onDownload = { real -> startDownload(real) },
+            onCancel = { real -> cancelDownload(real) },
             onQuantChange = { real, q -> changeQuant(real, q) },
             onDelete = { real -> confirmDelete(real) }
         )
@@ -90,7 +91,7 @@ class ModelsActivity : AppCompatActivity() {
         val m = AppData.models[real]
         m.quant = quant
         m.downloading = false
-        m.progress = 0
+        m.progress = 0f
         ModelDownloader.saveQuant(this, m.name, quant)
         m.downloaded = ModelDownloader.readyFile(this, m.name, quant) != null
         adapter.notifyDataSetChanged()
@@ -115,7 +116,7 @@ class ModelsActivity : AppCompatActivity() {
         ModelDownloader.saveTotal(this, m.name, m.quant, 0L)
         m.downloaded = false
         m.downloading = false
-        m.progress = 0
+        m.progress = 0f
         adapter.notifyDataSetChanged()
         Toast.makeText(
             this,
@@ -176,7 +177,7 @@ class ModelsActivity : AppCompatActivity() {
             ModelDownloader.storedFile(this, fn)?.takeIf { it.exists() }?.delete()
         }
         m.downloading = true
-        m.progress = 0
+        m.progress = 0f
         adapter.notifyDataSetChanged()
         Thread {
             try {
@@ -223,6 +224,18 @@ class ModelsActivity : AppCompatActivity() {
         }.start()
     }
 
+    private fun cancelDownload(real: Int) {
+        val m = AppData.models[real]
+        if (m.downloadId > 0) {
+            ModelDownloader.remove(this, m.downloadId)
+        }
+        m.downloading = false
+        m.progress = 0f
+        m.downloadId = -1L
+        adapter.notifyDataSetChanged()
+        Toast.makeText(this, "Download dibatalkan", Toast.LENGTH_SHORT).show()
+    }
+
     private fun pollDownload(real: Int, id: Long) {
         val m = AppData.models[real]
         val tick = object : Runnable {
@@ -240,14 +253,14 @@ class ModelsActivity : AppCompatActivity() {
                 if (p.status == android.app.DownloadManager.STATUS_SUCCESSFUL) {
                     m.downloading = false
                     m.downloaded = true
-                    m.progress = 100
+                    m.progress = 100f
                     handler.post {
                         adapter.notifyDataSetChanged()
                         Toast.makeText(this@ModelsActivity, "${m.shortName} ${m.quant} downloaded", Toast.LENGTH_SHORT).show()
                     }
                     return
                 }
-                if (p.total > 0) m.progress = (100 * p.done / p.total).toInt()
+                if (p.total > 0) m.progress = (100f * p.done / p.total).coerceIn(0f, 100f)
                 handler.post { adapter.notifyDataSetChanged() }
                 handler.postDelayed(this, 800)
             }

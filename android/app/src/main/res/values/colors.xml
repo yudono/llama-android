@@ -20,6 +20,7 @@
     <!-- Status -->
     <color name="green">#4CC864</color>
     <color name="yellow">#E6C832</color>
+    <color name="red">#E65C5C</color>
     <!-- Lines -->
     <color name="divider">#2A2A32</color>
     <color name="white">#FFFFFF</color>

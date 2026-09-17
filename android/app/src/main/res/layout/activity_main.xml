@@ -262,7 +262,7 @@
             app:iconTint="@color/accent"
             app:strokeColor="@color/accent" />
 
-        <!-- Menu rata kiri: Models / Settings -->
+        <!-- Menu rata kiri: Models / Settings / Image Gen -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_models"
             style="@style/Widget.MaterialComponents.Button.TextButton"
@@ -290,6 +290,21 @@
             android:text="Settings"
             android:textColor="@color/text_dim"
             app:icon="@drawable/ic_settings"
+            app:iconGravity="textStart"
+            app:iconTint="@color/text_dim" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_image"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:gravity="start|center_vertical"
+            android:letterSpacing="0"
+            android:paddingStart="12dp"
+            android:text="Image Gen"
+            android:textColor="@color/text_dim"
+            app:icon="@drawable/ic_image"
             app:iconGravity="textStart"
             app:iconTint="@color/text_dim" />
 

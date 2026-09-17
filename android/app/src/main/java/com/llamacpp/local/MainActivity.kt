@@ -436,6 +436,10 @@ class MainActivity : AppCompatActivity() {
         b.btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+        b.btnImage.setOnClickListener {
+            b.drawerLayout.closeDrawer(Gravity.START)
+            startActivity(Intent(this, ImageGenActivity::class.java))
+        }
         convAdapter = ConversationAdapter(
             onOpen = { id -> openConversation(id) },
             onDelete = { id -> deleteConversation(id) }

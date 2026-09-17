@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:orientation="vertical">
+
+    <!-- Top bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="58dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingEnd="14dp">
+
+        <ImageButton
+            android:id="@+id/btn_back"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/btn_circle"
+            android:contentDescription="Back"
+            android:padding="10dp"
+            android:src="@drawable/ic_back" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:text="Image Gen"
+            android:textColor="@color/text"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/tv_sd_ver"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_faint"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:padding="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Model -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Model"
+                android:textColor="@color/text_dim"
+                android:textSize="12sp" />
+
+            <Spinner
+                android:id="@+id/sp_image_model"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_input"
+                android:paddingStart="12dp"
+                android:popupBackground="@color/card" />
+
+            <!-- Status download + tombol -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_dl_status"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/text_dim"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_del_model"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="4dp"
+                    android:text="Del"
+                    android:textColor="@color/text_faint"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_dl"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="Get"
+                    android:textColor="@color/accent"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/dl_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="4dp"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="@color/accent"
+                android:progressBackgroundTint="@color/divider"
+                android:visibility="gone" />
+
+            <!-- Prompt -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Prompt"
+                android:textColor="@color/text_dim"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/et_prompt"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_input"
+                android:hint="masterpiece, ultra realistic macro photography of a monarch butterfly..."
+                android:inputType="textMultiLine|textCapSentences"
+                android:minLines="3"
+                android:padding="12dp"
+                android:textColor="@color/text"
+                android:textColorHint="@color/text_faint"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Negative prompt (opsional)"
+                android:textColor="@color/text_dim"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/et_negative"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_input"
+                android:hint="blurry, low quality, watermark"
+                android:inputType="text"
+                android:padding="12dp"
+                android:textColor="@color/text"
+                android:textColorHint="@color/text_faint"
+                android:textSize="14sp" />
+
+            <!-- Parameter baris 1: size + steps + cfg -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Size"
+                        android:textColor="@color/text_dim"
+                        android:textSize="12sp" />
+
+                    <Spinner
+                        android:id="@+id/sp_size"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginEnd="6dp"
+                        android:background="@drawable/bg_input"
+                        android:paddingStart="10dp"
+                        android:popupBackground="@color/card" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Steps"
+                        android:textColor="@color/text_dim"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/et_steps"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginEnd="6dp"
+                        android:background="@drawable/bg_input"
+                        android:inputType="number"
+                        android:paddingStart="12dp"
+                        android:text="6"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="CFG"
+                        android:textColor="@color/text_dim"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/et_cfg"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_input"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="12dp"
+                        android:text="2.0"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Parameter baris 2: sampler + seed -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sampler"
+                        android:textColor="@color/text_dim"
+                        android:textSize="12sp" />
+
+                    <Spinner
+                        android:id="@+id/sp_sampler"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginEnd="6dp"
+                        android:background="@drawable/bg_input"
+                        android:paddingStart="10dp"
+                        android:popupBackground="@color/card" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Seed (kosong = acak)"
+                        android:textColor="@color/text_dim"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/et_seed"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_input"
+                        android:hint="acak"
+                        android:inputType="number"
+                        android:paddingStart="12dp"
+                        android:textColor="@color/text"
+                        android:textColorHint="@color/text_faint"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Tombol generate -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_generate"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="Generate"
+                    android:textSize="14sp"
+                    app:backgroundTint="@color/accent"
+                    app:cornerRadius="12dp"
+                    android:textColor="@color/on_accent" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_cancel_gen"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="8dp"
+                    android:text="Cancel"
+                    android:textColor="@color/red"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_gen_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/yellow"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/gen_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginTop="4dp"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="@color/accent"
+                android:progressBackgroundTint="@color/divider"
+                android:visibility="gone" />
+
+            <!-- Hasil -->
+            <ImageView
+                android:id="@+id/iv_result"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:adjustViewBounds="true"
+                android:background="@drawable/bg_card"
+                android:contentDescription="Hasil gambar"
+                android:minHeight="200dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_result_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_faint"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_share"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                android:letterSpacing="0"
+                android:text="Share"
+                android:textColor="@color/accent"
+                app:strokeColor="@color/accent"
+                android:visibility="gone" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

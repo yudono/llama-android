@@ -16,6 +16,7 @@ class ModelAdapter(
     private var selectedPos: Int,
     private val onSelect: (Int) -> Unit,
     private val onDownload: (Int) -> Unit,
+    private val onCancel: (Int) -> Unit,
     private val onQuantChange: (Int, String) -> Unit,
     private val onDelete: (Int) -> Unit
 ) : RecyclerView.Adapter<ModelAdapter.VH>() {
@@ -73,9 +74,12 @@ class ModelAdapter(
                 h.delete.setOnClickListener { onDelete(real) }
             }
             m.downloading -> {
-                h.status.text = "Downloading ${m.progress}%"
+                h.status.text = "Downloading ${m.progressLabel()}"
                 h.status.setTextColor(ContextCompat.getColor(h.itemView.context, R.color.yellow))
-                h.action.visibility = View.GONE
+                h.action.visibility = View.VISIBLE
+                h.action.text = "Cancel"
+                h.action.setTextColor(ContextCompat.getColor(h.itemView.context, R.color.red))
+                h.action.setOnClickListener { onCancel(real) }
                 h.delete.visibility = View.GONE
             }
             else -> {
