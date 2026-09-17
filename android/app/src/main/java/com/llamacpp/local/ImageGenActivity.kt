@@ -43,6 +43,9 @@ class ImageGenActivity : AppCompatActivity() {
     private var handleFor = ""
 
     private var lastOut: File? = null
+    // Catatan hasil/error permanen (pengganti toast yg hilang).
+    private var genNote: String? = null
+    private var genNoteError = false
     // Pembatalan salinan file lokal per model (pick).
     private val copyCancels = mutableMapOf<Int, AtomicBoolean>()
     private var pickFor = -1
@@ -415,7 +418,15 @@ class ImageGenActivity : AppCompatActivity() {
         if (!generating) {
             b.btnCancelGen.visibility = View.GONE
             b.genProgress.visibility = View.GONE
-            b.tvGenStatus.visibility = View.GONE
+            if (genNote != null) {
+                b.tvGenStatus.visibility = View.VISIBLE
+                b.tvGenStatus.text = genNote
+                b.tvGenStatus.setTextColor(
+                    ContextCompat.getColor(this, if (genNoteError) R.color.red else R.color.yellow)
+                )
+            } else {
+                b.tvGenStatus.visibility = View.GONE
+            }
         }
     }
 
@@ -456,6 +467,8 @@ class ImageGenActivity : AppCompatActivity() {
         val seedReq = b.etSeed.text.toString().trim().toLongOrNull() ?: -1L
 
         generating = true
+        genNote = null
+        genNoteError = false
         refreshGen()
         b.btnCancelGen.visibility = View.VISIBLE
         b.genProgress.visibility = View.VISIBLE
@@ -505,11 +518,25 @@ class ImageGenActivity : AppCompatActivity() {
                             throw IllegalStateException("PNG rusak")
                         }
                     }
-                    -2 -> Toast.makeText(this@ImageGenActivity, "Generate dibatalkan", Toast.LENGTH_SHORT).show()
-                    -3 -> Toast.makeText(this@ImageGenActivity, "Gagal menyimpan PNG", Toast.LENGTH_LONG).show()
-                    else -> Toast.makeText(this@ImageGenActivity, "Generate gagal", Toast.LENGTH_LONG).show()
+                    -2 -> {
+                        genNote = "Generate dibatalkan"
+                        genNoteError = false
+                        Toast.makeText(this@ImageGenActivity, "Generate dibatalkan", Toast.LENGTH_SHORT).show()
+                    }
+                    -3 -> {
+                        genNote = "Gagal menyimpan PNG (penyimpanan penuh?)"
+                        genNoteError = true
+                        Toast.makeText(this@ImageGenActivity, "Gagal menyimpan PNG", Toast.LENGTH_LONG).show()
+                    }
+                    else -> {
+                        genNote = "Generate gagal (kode $rc) — coba 256px / tutup aplikasi lain"
+                        genNoteError = true
+                        Toast.makeText(this@ImageGenActivity, "Generate gagal", Toast.LENGTH_LONG).show()
+                    }
                 }
             } catch (e: Exception) {
+                genNote = "Error: ${e.message}"
+                genNoteError = true
                 Toast.makeText(this@ImageGenActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
             generating = false
